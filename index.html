@@ -188,7 +188,7 @@ const WORKOUT2_EXERCISES = [
 ];
 const CARDIO_TARGETS = {
  "Steady":{"Wk1-2":"30 min continuous — Zone 2 / talking pace","Wk3-4":"40 min continuous — Zone 2 / talking pace","Wk5-6":"25 min continuous — Zone 3 / 7/10 difficulty"},
- "Sprint / COD":{"Wk1-2":"Flying sprint: jog 10m in, sprint 40m, x6, 60s rest — max effort","Wk3-4":"T-Drill x4, 90s rest — max effort","Wk5-6":"Shuttle 5m/10m/15m x5, 30s rest — max effort"},
+ "Sprint / COD":{"Wk1-2":"20m sprints x6, 60s rest — then Flying sprint: jog 10m in, sprint 40m, x4, 60s rest — max effort","Wk3-4":"20m sprints x5, 60s rest — then T-Drill x4, 90s rest — max effort (<a class=\"demo\" href=\"https://youtu.be/O3hyDIAPoR0\" target=\"_blank\" rel=\"noopener\">demo&#9654;</a>)","Wk5-6":"20m sprints x4, 60s rest — then Shuttle 5m/10m/15m x5, 30s rest — max effort"},
  "Interval":{"Wk1-2":"4 sets: 4min ON / 2min OFF — 80-90% max HR","Wk3-4":"6 sets: 2min ON / 1min OFF — 80-90% max HR","Wk5-6":"6 sets: 1min ON / 1min OFF — 80-90% max HR"},
  "Hockey Match":{"Wk1-2":"Match — replaces Interval","Wk3-4":"Match — replaces Interval","Wk5-6":"Match — replaces Interval"}
 };
@@ -471,7 +471,8 @@ function onCardioTypeChange(rowKey, val){
   save();
   const week = parseInt(rowKey.split('_')[0],10);
   const block = weekBlock(week);
-  document.getElementById('cardio-target-'+rowKey).textContent = (CARDIO_TARGETS[val]||{})[block] || '';
+  // innerHTML (not textContent) — target text can contain a demo-video link, e.g. Sprint/COD's T-Drill
+  document.getElementById('cardio-target-'+rowKey).innerHTML = (CARDIO_TARGETS[val]||{})[block] || '';
 }
 function toggleSkip(dayKey){
   const rec = DATA.skip[dayKey] || {};
