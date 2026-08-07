@@ -210,11 +210,28 @@ const STATUS_TYPES = ["Active","Recovering","Resolved"];
 
 /* ================= STORAGE ================= */
 const STORE_KEY = "hockey_tracker_v3";
+// NEVER bump STORE_KEY to migrate the schema — that orphans existing users' data under the old key
+// (silently invisible, not technically deleted, but indistinguishable from data loss to the user).
+// Instead bump SCHEMA_VERSION and add a migration step in migrateData() below.
+const SCHEMA_VERSION = 1;
 let DATA = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
-DATA.w1 = DATA.w1 || {}; DATA.w2 = DATA.w2 || {}; DATA.cardio = DATA.cardio || {};
-DATA.mobility = DATA.mobility || {}; DATA.body = DATA.body || {}; DATA.injury = DATA.injury || {};
-DATA.skip = DATA.skip || {}; // "{week}_{dayIndex}": {skipped:true, reason:"Injured"}
-DATA.settings = DATA.settings || {}; // one-off values that don't change weekly, e.g. height for BMI
+function applyDefaults(d){
+  d.w1 = d.w1 || {}; d.w2 = d.w2 || {}; d.cardio = d.cardio || {};
+  d.mobility = d.mobility || {}; d.body = d.body || {}; d.injury = d.injury || {};
+  d.skip = d.skip || {}; // "{week}_{dayIndex}": {skipped:true, reason:"Injured"}
+  d.settings = d.settings || {}; // one-off values that don't change weekly, e.g. height for BMI
+  return d;
+}
+function migrateData(){
+  // Runs on every load and after every import. If DATA predates schemaVersion tracking, it's
+  // implicitly version 0 (unversioned) — add real migration steps here as `if(v < N){...}` blocks
+  // whenever the schema changes in the future, then stamp schemaVersion = SCHEMA_VERSION at the end.
+  const v = DATA.schemaVersion || 0;
+  if(v < 1){ /* no migration needed yet — v1 is the current baseline schema */ }
+  DATA.schemaVersion = SCHEMA_VERSION;
+}
+applyDefaults(DATA);
+migrateData();
 function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); }
 
 /* ================= NAV ================= */
@@ -281,7 +298,8 @@ function renderToday(){
 
   const jumpWeek = info.inProgram ? info.week : WEEKS;
   const jumpDay = info.inProgram ? info.dayIndex : 6;
-  let html = `<div class="daybar">
+  let html = backupReminderBanner();
+  html += `<div class="daybar">
     <button onclick="shiftDay(-1)" ${atMin?'disabled':''}>&#8592;</button>
     <div class="center">
       <div class="d">${esc(DAY_NAMES_FULL[(currentDate.getDay()+6)%7])}${isToday?' &middot; today':''}</div>
@@ -851,9 +869,10 @@ function renderReference(){
     <button class="secondary" onclick="document.getElementById('import-file').click()">Import backup</button>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
   </div>
-  <p style="font-size:11.5px;color:var(--text-dim)">This device is your single source of truth. Export a backup regularly (weekly is
-  plenty) in case you switch phones, and keep the file somewhere safe — Files app, iCloud Drive, email it to yourself, whatever
-  you'll actually remember to do.</p>
+  <p style="font-size:11.5px;color:var(--text-dim)">This device is your single source of truth — everything you log lives only in
+  this browser's storage, nowhere else. "Export backup" opens your device's share sheet: choose "Save to Files" and pick iCloud
+  Drive (not just "On My iPhone") so the backup survives a lost or reset phone, not just a full one. You'll get a reminder banner
+  on the Today tab if it's been a while since your last backup.</p>
   <div class="toolbar"><button class="danger" onclick="if(confirm('Clear all logged data on this device?')) clearAll()">Clear all data</button></div>`;
 }
 function icsDate(date, hour, min){
@@ -894,32 +913,106 @@ function downloadICS(){
   a.download = 'hockey-masters-trainer-reminders.ics';
   a.click();
 }
-function exportData(){
-  const blob = new Blob([JSON.stringify(DATA,null,2)], {type:'application/json'});
+// Prefer the native Share Sheet (Web Share API with a file) over a plain download link. On iOS a plain
+// download just lands in Safari's Downloads folder, which is easy to lose track of; the Share Sheet lets
+// the user explicitly save to iCloud Drive, AirDrop it to another device, or email it — all genuinely
+// durable, off-device destinations. Falls back to the old download-link behavior where Web Share isn't
+// available (desktop browsers, older iOS).
+async function exportData(){
+  DATA.settings.lastExportAt = new Date().toISOString();
+  save();
+  const filename = 'hockey-fitness-tracker-backup-' + ymd(new Date()) + '.json';
+  const jsonStr = JSON.stringify(DATA, null, 2);
+  const blob = new Blob([jsonStr], {type:'application/json'});
+
+  let canWebShare = false;
+  try{
+    canWebShare = !!(navigator.canShare && navigator.canShare({files:[new File([blob], filename, {type:'application/json'})]}));
+  }catch(e){ canWebShare = false; }
+
+  if(canWebShare){
+    try{
+      const file = new File([blob], filename, {type:'application/json'});
+      await navigator.share({files:[file], title:'Hockey Tracker Backup'});
+      renderToday();
+      return;
+    }catch(e){
+      if(e && e.name==='AbortError'){ renderToday(); return; } // user cancelled the share sheet — respect that, don't force a download too
+      // any other failure: fall through to the plain download below
+    }
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'hockey-fitness-tracker-backup.json';
+  a.download = filename;
   a.click();
+  renderToday();
+}
+function daysSinceLastExport(){
+  const last = DATA.settings.lastExportAt;
+  if(!last) return Infinity;
+  return Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
+}
+// Shown at the top of Today once backups are overdue. Data only lives on this one device — the risk
+// isn't just Safari's storage-eviction policy (home-screen apps are largely exempt from that as long as
+// you open them regularly) but the much more mundane one: a lost, broken, or reset phone. Either way,
+// a backup you haven't taken can't save you.
+function backupReminderBanner(){
+  const days = daysSinceLastExport();
+  if(days < 5) return '';
+  const msg = days===Infinity
+    ? "You haven't backed up yet. Everything you log lives only on this device."
+    : `It's been ${days} days since your last backup. Everything you log lives only on this device.`;
+  return `<div class="skip-banner" style="cursor:pointer" onclick="exportData()">
+    <span>${msg}</span>
+    <span style="text-decoration:underline;flex-shrink:0;margin-left:8px;white-space:nowrap">Back up now</span>
+  </div>`;
 }
 function importData(evt){
   const file = evt.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = ()=>{
-    try{
-      DATA = JSON.parse(reader.result);
-      DATA.w1=DATA.w1||{}; DATA.w2=DATA.w2||{}; DATA.cardio=DATA.cardio||{};
-      DATA.mobility=DATA.mobility||{}; DATA.body=DATA.body||{}; DATA.injury=DATA.injury||{};
-      DATA.skip=DATA.skip||{}; DATA.settings=DATA.settings||{};
-      save(); renderToday(); alert('Data imported.');
-    }catch(e){ alert('Could not read that file.'); }
+    let incoming;
+    try{ incoming = JSON.parse(reader.result); }
+    catch(e){ alert('Could not read that file — it may not be a valid backup.'); evt.target.value=''; return; }
+
+    const countEntries = d => ['w1','w2','cardio','mobility','body','injury','skip'].reduce((n,k)=> n + Object.keys(d[k]||{}).length, 0);
+    const currentCount = countEntries(DATA);
+    const incomingCount = countEntries(incoming);
+    const importedAt = incoming.settings && incoming.settings.lastExportAt ? new Date(incoming.settings.lastExportAt).toLocaleString() : 'an unknown date';
+    const proceed = confirm(
+      `This will REPLACE all data currently on this device (${currentCount} logged entries) with the imported backup `+
+      `(${incomingCount} entries, last exported ${importedAt}).\n\n`+
+      `A safety copy of what's currently on this device will download automatically first, in case this was a mistake.\n\nContinue?`
+    );
+    if(!proceed){ evt.target.value=''; return; }
+
+    // Safety net: snapshot whatever is currently on-device before overwriting it, so an accidental or
+    // wrong-file import is always recoverable, not a second way to lose data.
+    const safetyBlob = new Blob([JSON.stringify(DATA,null,2)], {type:'application/json'});
+    const sa = document.createElement('a');
+    sa.href = URL.createObjectURL(safetyBlob);
+    sa.download = 'hockey-tracker-PRE-IMPORT-safety-backup-' + ymd(new Date()) + '.json';
+    sa.click();
+
+    DATA = applyDefaults(incoming);
+    migrateData();
+    save(); renderToday();
+    alert('Data imported. A backup of what was on this device just before the import was also downloaded, just in case.');
   };
   reader.readAsText(file);
+  evt.target.value = '';
 }
-function clearAll(){ DATA={w1:{},w2:{},cardio:{},mobility:{},body:{},injury:{},skip:{},settings:{}}; save(); renderToday(); }
+function clearAll(){ DATA={w1:{},w2:{},cardio:{},mobility:{},body:{},injury:{},skip:{},settings:{},schemaVersion:SCHEMA_VERSION}; save(); renderToday(); }
 
 /* ================= INIT ================= */
 renderToday();
 renderReference();
+// Offline fallback so the Home Screen icon still opens with no signal (e.g. at a field/gym). sw.js is a
+// separate file — this registration is silently a no-op (caught, ignored) until sw.js is uploaded
+// alongside this file, so it's safe to ship before that file exists on the server.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
 </script>
 </body>
 </html>
