@@ -998,6 +998,11 @@ function renderReference(){
   const panel = document.getElementById('panel-reference');
   panel.innerHTML = `<h2>Plan Reference</h2>
   <div class="note">Add this page to your Home Screen (Safari share icon &rarr; "Add to Home Screen") so it opens full-screen like an app.</div>
+  <h3 style="font-size:14px;margin:0 0 8px">App updates</h3>
+  <div class="card">
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">This is a home-screen app with no browser bar to pull-to-refresh — after Simar pushes a code change, tap below to force-fetch the latest version. Safe any time: it only clears the app's cached files, never your logged data.</div>
+    <div class="toolbar"><button onclick="forceRefresh()">Refresh app (get latest version)</button></div>
+  </div>
   <table class="ref-table"><thead><tr><th>Day</th><th>Session</th></tr></thead><tbody>
     <tr><td>Mon</td><td>Steady Cardio</td></tr>
     <tr><td>Tue</td><td>Strength — Workout 1</td></tr>
@@ -1026,6 +1031,24 @@ function renderReference(){
   Drive (not just "On My iPhone") so the backup survives a lost or reset phone, not just a full one. You'll get a reminder banner
   on the Today tab if it's been a while since your last backup.</p>
   <div class="toolbar"><button class="danger" onclick="if(confirm('Clear all logged data on this device?')) clearAll()">Clear all data</button></div>`;
+}
+// Clears the service worker's cache AND unregisters it, then reloads. Unregistering (not just clearing
+// caches) matters: on next load the browser re-fetches sw.js itself from the network and re-runs
+// install/activate from scratch, which is what actually guarantees the freshest index.html — clearing
+// caches alone can still leave a stale service worker script running. Never touches localStorage/DATA,
+// so this can't lose logged data, only cached app files.
+async function forceRefresh(){
+  try{
+    if('caches' in window){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+    if('serviceWorker' in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+  }catch(e){} // best-effort — if the Cache/SW APIs aren't available or throw, still fall through to reload
+  location.reload();
 }
 function icsDate(date, hour, min){
   const p = n => String(n).padStart(2,'0');
