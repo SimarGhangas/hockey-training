@@ -207,6 +207,7 @@ const MOBILITY_ROUTINE = [
 ];
 const INJURY_TYPES = ["Ankle Sprain","Hamstring Strain","Calf Strain","Knee - Patellar Tendinitis","Knee - ACL","Knee - Meniscus","Achilles Tendinopathy","Adductor Strain","Shoulder","Lower Back","Other"];
 const STATUS_TYPES = ["Active","Recovering","Resolved"];
+const RPE_LEGEND = "0 rest &middot; 2 light &middot; 4 moderate &middot; 6 hard &middot; 8 very hard &middot; 10 max effort";
 
 /* ================= STORAGE ================= */
 const STORE_KEY = "hockey_tracker_v3";
@@ -220,6 +221,8 @@ function applyDefaults(d){
   d.mobility = d.mobility || {}; d.body = d.body || {}; d.injury = d.injury || {};
   d.skip = d.skip || {}; // "{week}_{dayIndex}": {skipped:true, reason:"Injured"}
   d.settings = d.settings || {}; // one-off values that don't change weekly, e.g. height for BMI
+  d.session = d.session || {}; // "{w1|w2}_{week}": {rpe, duration} — whole-session RPE, separate from per-exercise w1/w2 rows
+  d.tests = d.tests || {}; // "{1|6|12}": {sprint, cod, jump, run} — baseline/mid/final fitness benchmarks
   return d;
 }
 function migrateData(){
@@ -398,6 +401,16 @@ function renderToday(){
         ${fieldHtml('Completed?', ynPills(key, rowKey, 'done', rec.done))}
       </div>`;
     });
+    const sessKey = `${key}_${week}`;
+    const sessRec = DATA.session[sessKey] || {};
+    html += `<div class="exrow">
+      <div class="exname">Session RPE</div>
+      <div class="extarget">How hard did the WHOLE session feel? ${RPE_LEGEND}</div>
+      <div class="row2">
+        ${fieldHtml('RPE (0-10)', `<input type="number" min="0" max="10" data-k="session" data-row="${sessKey}" data-f="rpe" value="${sessRec.rpe??''}">`)}
+        ${fieldHtml('Session duration (min)', `<input type="number" data-k="session" data-row="${sessKey}" data-f="duration" value="${sessRec.duration??''}">`)}
+      </div>
+    </div>`;
     html += `</div>`;
   } else if(CARDIO_BY_DAYINDEX[dayIndex]){
     const slot = CARDIO_SLOT_BY_DAYINDEX[dayIndex];
@@ -414,6 +427,8 @@ function renderToday(){
         ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="cardio" data-row="${rowKey}" data-f="dist" value="${rec.dist??''}">`)}
         ${fieldHtml('Time (min)', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="dur" value="${rec.dur??''}">`)}
       </div>
+      ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="cardio" data-row="${rowKey}" data-f="rpe" value="${rec.rpe??''}">`)}
+      <div style="font-size:11px;color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
       ${fieldHtml('Completed?', ynPills('cardio', rowKey, 'done', rec.done))}
       ${fieldHtml('Notes', `<textarea data-k="cardio" data-row="${rowKey}" data-f="notes">${esc(rec.notes||'')}</textarea>`)}
     </div>`;
@@ -511,7 +526,7 @@ function onSkipReasonChange(dayKey, val){
 let historyFilter = 'all';
 function renderHistory(){
   const panel = document.getElementById('panel-history');
-  const chips = ['all','strength','cardio','mobility','body','injury','skipped'];
+  const chips = ['all','strength','cardio','mobility','body','injury','skipped','tests'];
   let html = `<h2>History</h2>
   <div class="chip-row">${chips.map(c=>`<div class="chip ${historyFilter===c?'active':''}" onclick="setHistoryFilter('${c}')">${c[0].toUpperCase()+c.slice(1)}</div>`).join('')}</div>
   <div id="history-list"></div>`;
@@ -531,13 +546,17 @@ function renderHistoryList(){
           if(!rec || (!rec.used && !rec.actual && !rec.weight && !rec.done)) return;
           entries.push({title:(k==='w1'?'Workout 1':'Workout 2')+' — '+rowKey.split('_')[1], meta:`${rec.used||''} ${rec.actual||''} ${rec.weight?rec.weight+'kg':''} ${rec.done==='Y'?'✓':''}`});
         });
+        const sessRec = DATA.session[`${k}_${week}`];
+        if(sessRec && ((sessRec.rpe!==undefined && sessRec.rpe!=='') || sessRec.duration)){
+          entries.push({title:(k==='w1'?'Workout 1':'Workout 2')+' — Session RPE', meta:`${sessRec.rpe!==undefined&&sessRec.rpe!==''?'RPE '+sessRec.rpe:''} ${sessRec.duration?sessRec.duration+'min':''}`});
+        }
       });
     }
     if(historyFilter==='all'||historyFilter==='cardio'){
       [1,2,3].forEach(s=>{
         const rec = DATA.cardio[`${week}_${s}`];
         if(!rec || (!rec.dist && !rec.dur && !rec.hr && !rec.done)) return;
-        entries.push({title:'Cardio — '+(rec.type||''), meta:`${rec.dist?rec.dist+'km':''} ${rec.dur?rec.dur+'min':''} ${rec.hr?rec.hr+'bpm':''} ${rec.done==='Y'?'✓':''}`});
+        entries.push({title:'Cardio — '+(rec.type||''), meta:`${rec.dist?rec.dist+'km':''} ${rec.dur?rec.dur+'min':''} ${rec.hr?rec.hr+'bpm':''} ${rec.rpe!==undefined&&rec.rpe!==''?'RPE '+rec.rpe:''} ${rec.done==='Y'?'✓':''}`});
       });
     }
     if(historyFilter==='all'||historyFilter==='mobility'){
@@ -570,6 +589,12 @@ function renderHistoryList(){
           : rec.reason||'Rest';
         entries.push({title, meta});
       });
+    }
+    if((historyFilter==='all'||historyFilter==='tests') && ['1','6','12'].includes(String(week))){
+      const t = DATA.tests[String(week)];
+      if(t && (t.sprint||t.cod||t.jump||t.run)){
+        entries.push({title:'Fitness Test — Week '+week, meta:`${t.sprint?'Sprint '+t.sprint+'s':''} ${t.cod?'505 '+t.cod+'s':''} ${t.jump?'Jump '+t.jump+'cm':''} ${t.run?'Cooper '+t.run+'m':''}`});
+      }
     }
     if(!entries.length) continue;
     out += `<details class="hist-week"><summary>Week ${week} <span class="cnt">${entries.length} entries</span></summary>
@@ -667,6 +692,106 @@ function currentBMI(){
   const category = bmi<18.5?'Underweight' : bmi<25?'Normal' : bmi<30?'Overweight' : 'Obese';
   return { bmi, category };
 }
+// Detects exercises whose target is a timed hold (e.g. "20s", "16s e.s") rather than a rep count
+// (e.g. "10-12", "12 e.s") — Epley 1RM estimation is meaningless for an isometric hold, so those get
+// charted as raw weight instead. Checked against the Wk1-2 target only, since an exercise's fundamental
+// nature (timed vs rep-based) doesn't change across blocks, only the numbers do.
+function repsAreTimeBased(repsStr){ return /^\d+s(\s|$)/.test(String(repsStr).trim()); }
+
+function strengthExerciseList(){
+  const build = (key, group, list) => list.map(ex=>{
+    const [slot,sup,gymEx,gymLink,homeEx,homeLink,t12,t34,t56] = ex;
+    return { key, slot, group, label:`${gymEx} / ${homeEx}`, timeBased: repsAreTimeBased(t12[1]),
+      targets:{ "Wk1-2":t12, "Wk3-4":t34, "Wk5-6":t56 } };
+  });
+  return [...build('w1','Workout 1',WORKOUT1_EXERCISES), ...build('w2','Workout 2',WORKOUT2_EXERCISES)];
+}
+
+// Estimated 1RM uses the WEEK'S PRESCRIBED reps, not the freeform "Actual (sets x reps)" text field —
+// that field is unstructured (people type "3x10", "10,10,8", "8 reps", anything), too unreliable to
+// parse into a rep count. Prescribed reps is a defensible stand-in when the session was followed as
+// programmed, and the chart labels it explicitly as an estimate rather than presenting it as exact.
+function strengthProgressionSeries(key, slot){
+  const info = strengthExerciseList().find(e=>e.key===key && e.slot===slot);
+  if(!info) return { values:[], timeBased:false, label:'' };
+  const weeks = Array.from({length:WEEKS},(_,i)=>i+1);
+  const values = weeks.map(week=>{
+    const rec = DATA[key][`${week}_${slot}`];
+    if(!rec || rec.weight===undefined || rec.weight==='') return null;
+    const weight = parseFloat(rec.weight);
+    if(isNaN(weight)) return null;
+    if(info.timeBased) return weight;
+    const repsStr = String(info.targets[weekBlock(week)][1]);
+    const repsMatch = repsStr.match(/\d+/);
+    const reps = repsMatch ? parseFloat(repsMatch[0]) : null;
+    return reps ? weight * (1 + reps/30) : weight; // Epley; falls back to raw weight if reps unparseable
+  });
+  return { values, timeBased: info.timeBased, label: info.label };
+}
+
+// Weekly training load = session RPE x session duration (mins), summed across every session logged
+// that week (Workout 1, Workout 2, and all three cardio slots) — the standard Foster sRPE method. Lets
+// load spikes show up even when raw RPE looks flat: a short brutal session and a long moderate one can
+// report the same RPE but represent very different strain on the body.
+function weeklyTrainingLoad(week){
+  let load = 0, any = false;
+  ['w1','w2'].forEach(key=>{
+    const r = DATA.session[`${key}_${week}`];
+    if(r && r.rpe!==undefined && r.rpe!=='' && r.duration){ load += (parseFloat(r.rpe)||0) * (parseFloat(r.duration)||0); any = true; }
+  });
+  for(let s=1; s<=3; s++){
+    const r = DATA.cardio[`${week}_${s}`];
+    if(r && r.rpe!==undefined && r.rpe!=='' && r.dur){ load += (parseFloat(r.rpe)||0) * (parseFloat(r.dur)||0); any = true; }
+  }
+  return any ? load : null; // null (not 0) when nothing logged, so the chart shows a gap rather than a false zero
+}
+
+// Change from the Week 1 baseline test to the latest test logged (Week 6 if present, else Week 12).
+// higherIsBetter distinguishes sprint/COD (lower=faster=better) from jump/run (higher=further=better).
+function testDelta(field, higherIsBetter){
+  const w1 = DATA.tests['1'];
+  const w1v = w1 && w1[field]!==undefined && w1[field]!=='' ? parseFloat(w1[field]) : null;
+  let latestWeek=null, latestV=null;
+  ['12','6'].forEach(w=>{
+    if(latestV!=null) return;
+    const r = DATA.tests[w];
+    if(r && r[field]!==undefined && r[field]!==''){ latestWeek=w; latestV=parseFloat(r[field]); }
+  });
+  if(w1v==null || latestV==null || latestWeek==='1') return null;
+  const delta = latestV - w1v;
+  const improved = higherIsBetter ? delta>0 : delta<0;
+  return { delta, latestWeek, improved };
+}
+function testFieldRow(label, field, unit, protocol){
+  return `<div class="field"><label>${esc(label)} (${unit})</label>
+    <div style="font-size:11px;color:var(--text-faint);margin:-2px 0 6px">${esc(protocol)}</div>
+    <div class="row3">
+      ${['1','6','12'].map(w=>`<input type="number" step="0.1" placeholder="Wk${w}" data-k="tests" data-row="${w}" data-f="${field}" value="${(DATA.tests[w]&&DATA.tests[w][field]!==undefined)?DATA.tests[w][field]:''}">`).join('')}
+    </div></div>`;
+}
+function testDeltaHtml(field, unit, higherIsBetter){
+  const d = testDelta(field, higherIsBetter);
+  if(!d) return '';
+  const color = d.improved ? 'var(--success)' : 'var(--danger)';
+  return `<div style="font-size:11.5px;color:${color};margin:-4px 0 12px">Wk1 &rarr; Wk${d.latestWeek}: ${d.delta>0?'+':''}${d.delta.toFixed(2)}${unit} &mdash; ${d.improved?'improved':'declined'}</div>`;
+}
+
+let selectedStrengthEx = {key:'w1', slot:'1'};
+function onStrengthExSelectChange(){
+  const [key,slot] = document.getElementById('strength-ex-select').value.split('|');
+  selectedStrengthEx = {key,slot};
+  renderStrengthChart(key,slot);
+}
+function renderStrengthChart(key,slot){
+  const {values,timeBased} = strengthProgressionSeries(key,slot);
+  const weeks = Array.from({length:WEEKS},(_,i)=>i+1);
+  const labelEl = document.getElementById('strength-chart-label');
+  if(labelEl) labelEl.textContent = timeBased
+    ? "Weight logged (kg) — timed hold, 1RM estimate doesn't apply"
+    : "Estimated 1RM (kg) — Epley formula, using logged weight + that week's prescribed reps";
+  drawLineChart('strength-chart', weeks, values, '#5FA8FF');
+}
+
 function renderDashboard(){
   const panel = document.getElementById('panel-dashboard');
   const w1 = strengthAdherence('w1',1), w2 = strengthAdherence('w2',3);
@@ -720,10 +845,35 @@ function renderDashboard(){
       <div style="font-size:11px;color:var(--text-faint)">Calculated from your most recent weekly weigh-in. Standard BMI bands don't distinguish muscle from fat — take "Overweight" with a grain of salt if it's driven by strength gains, not body fat.</div>`
       : `<div class="note" style="margin:8px 0 0">Enter your height above (and at least one weekly bodyweight check-in) to calculate BMI.</div>`}
   </div>
+  <div class="card">
+    <h3>Fitness Tests <span class="tag">Wk 1 / 6 / 12</span></h3>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">Same benchmark, same conditions, three checkpoints — this is the only thing in the app that tells you whether 12 weeks of training actually worked, not just whether it happened.</div>
+    ${testFieldRow('20m Sprint', 'sprint', 'sec', 'Standing start, 20m maximal sprint, timed.')}
+    ${testDeltaHtml('sprint', 's', false)}
+    ${testFieldRow('5-0-5 Change of Direction', 'cod', 'sec', "10m run-in, sprint 5m, plant + turn 180°, sprint back 5m — time the middle 5m-0-5m only.")}
+    ${testDeltaHtml('cod', 's', false)}
+    ${testFieldRow('Standing Broad Jump', 'jump', 'cm', 'Two-foot takeoff and landing, max distance from a standstill.')}
+    ${testDeltaHtml('jump', 'cm', true)}
+    ${testFieldRow('12-Minute Cooper Run', 'run', 'm', 'Run/jog for exactly 12 minutes, record total distance covered.')}
+    ${testDeltaHtml('run', 'm', true)}
+  </div>
   <div class="card"><h3>Weekly bodyweight</h3><canvas id="bw-chart" height="90"></canvas></div>
   <div class="card"><h3>Weekly cardio distance</h3><canvas id="dist-chart" height="90"></canvas></div>
   <div class="card"><h3>Weekly resting heart rate</h3><canvas id="rhr-chart" height="90"></canvas></div>
   <div class="card"><h3>Weekly avg sleep</h3><canvas id="sleep-chart" height="90"></canvas></div>
+  <div class="card"><h3>Weekly Training Load <span class="tag">RPE &times; mins</span></h3>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">Sum of session RPE &times; session duration across everything logged that week. Watch for sharp spikes, not just the level — that's usually what precedes a niggle.</div>
+    <canvas id="load-chart" height="90"></canvas>
+  </div>
+  <div class="card">
+    <h3>Strength Progression</h3>
+    ${fieldHtml('Exercise', `<select id="strength-ex-select" onchange="onStrengthExSelectChange()">
+      <optgroup label="Workout 1">${strengthExerciseList().filter(e=>e.group==='Workout 1').map(e=>`<option value="${e.key}|${e.slot}" ${selectedStrengthEx.key===e.key&&selectedStrengthEx.slot===e.slot?'selected':''}>${esc(e.label)}</option>`).join('')}</optgroup>
+      <optgroup label="Workout 2">${strengthExerciseList().filter(e=>e.group==='Workout 2').map(e=>`<option value="${e.key}|${e.slot}" ${selectedStrengthEx.key===e.key&&selectedStrengthEx.slot===e.slot?'selected':''}>${esc(e.label)}</option>`).join('')}</optgroup>
+    </select>`)}
+    <div id="strength-chart-label" style="font-size:11px;color:var(--text-dim);margin:-6px 0 8px"></div>
+    <canvas id="strength-chart" height="90"></canvas>
+  </div>
   <div class="card">
     <h3>Activity mix</h3>
     <canvas id="mix-pie" height="180" style="max-width:180px;margin:0 auto;display:block"></canvas>
@@ -744,6 +894,8 @@ function renderDashboard(){
     {label:'Match', value:breakdown.match, color:'#FF6F85'},
     {label:'Hockey Training', value:breakdown.training, color:'#FFB020'},
   ]);
+  drawLineChart('load-chart', weeks, weeks.map(weeklyTrainingLoad), '#FF8A3D');
+  renderStrengthChart(selectedStrengthEx.key, selectedStrengthEx.slot);
 }
 // ROOT CAUSE of the "charts don't fit their boxes" bug: setting canvas.width/canvas.height (the
 // bitmap-resolution attributes) with no matching CSS size pins the DISPLAYED box to those attribute
@@ -975,7 +1127,7 @@ function importData(evt){
     try{ incoming = JSON.parse(reader.result); }
     catch(e){ alert('Could not read that file — it may not be a valid backup.'); evt.target.value=''; return; }
 
-    const countEntries = d => ['w1','w2','cardio','mobility','body','injury','skip'].reduce((n,k)=> n + Object.keys(d[k]||{}).length, 0);
+    const countEntries = d => ['w1','w2','cardio','mobility','body','injury','skip','session','tests'].reduce((n,k)=> n + Object.keys(d[k]||{}).length, 0);
     const currentCount = countEntries(DATA);
     const incomingCount = countEntries(incoming);
     const importedAt = incoming.settings && incoming.settings.lastExportAt ? new Date(incoming.settings.lastExportAt).toLocaleString() : 'an unknown date';
@@ -1002,7 +1154,7 @@ function importData(evt){
   reader.readAsText(file);
   evt.target.value = '';
 }
-function clearAll(){ DATA={w1:{},w2:{},cardio:{},mobility:{},body:{},injury:{},skip:{},settings:{},schemaVersion:SCHEMA_VERSION}; save(); renderToday(); }
+function clearAll(){ DATA={w1:{},w2:{},cardio:{},mobility:{},body:{},injury:{},skip:{},settings:{},session:{},tests:{},schemaVersion:SCHEMA_VERSION}; save(); renderToday(); }
 
 /* ================= INIT ================= */
 renderToday();
