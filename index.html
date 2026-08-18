@@ -854,6 +854,7 @@ function renderToday(){
           ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${extraRec.distance??''}">`)}
           ${fieldHtml('Time (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${extraRec.duration??''}">`)}
         </div>
+        ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${extraRec.calories??''}">`)}
         ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="extra" data-row="${dayKey}" data-f="rpe" value="${extraRec.rpe??''}">`)}
         <div style="font-size:11px;color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
       ` : `
@@ -957,6 +958,7 @@ function renderToday(){
         ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="cardio" data-row="${rowKey}" data-f="dist" value="${rec.dist??''}">`)}
         ${fieldHtml('Time (min)', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="dur" value="${rec.dur??''}">`)}
       </div>
+      ${fieldHtml('Active calories', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="calories" value="${rec.calories??''}">`)}
       ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="cardio" data-row="${rowKey}" data-f="rpe" value="${rec.rpe??''}">`)}
       <div style="font-size:11px;color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
       ${fieldHtml('Completed?', ynPills('cardio', rowKey, 'done', rec.done))}
@@ -1153,8 +1155,8 @@ function renderHistoryList(){
     if(historyFilter==='all'||historyFilter==='cardio'){
       CARDIO_TYPES.forEach(type=>{
         const rec = DATA.cardio[`${week}_${type}`];
-        if(!rec || (!rec.dist && !rec.dur && !rec.hr && !rec.done)) return;
-        entries.push({title:'Cardio — '+type, meta:`${rec.dist?rec.dist+'km':''} ${rec.dur?rec.dur+'min':''} ${rec.hr?rec.hr+'bpm':''} ${rec.rpe!==undefined&&rec.rpe!==''?'RPE '+rec.rpe:''} ${rec.done==='Y'?'✓':''}`});
+        if(!rec || (!rec.dist && !rec.dur && !rec.hr && !rec.calories && !rec.done)) return;
+        entries.push({title:'Cardio — '+type, meta:`${rec.dist?rec.dist+'km':''} ${rec.dur?rec.dur+'min':''} ${rec.hr?rec.hr+'bpm':''} ${rec.calories?rec.calories+'kcal':''} ${rec.rpe!==undefined&&rec.rpe!==''?'RPE '+rec.rpe:''} ${rec.done==='Y'?'✓':''}`});
       });
     }
     if(historyFilter==='all'||historyFilter==='mobility'){
