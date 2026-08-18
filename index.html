@@ -104,7 +104,12 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
 .timer-row .timer-pause{flex:1;}
 .timer-row .timer-reset{flex:1;background:var(--surface2);color:var(--text-dim);}
 .excarousel{overflow:hidden;margin:-4px 0 10px;transition:height .25s ease;}
-.excarousel-track{display:flex;transition:transform .25s ease;touch-action:pan-y;}
+/* align-items:flex-start (NOT the flex default of stretch) is load-bearing here: with the default stretch,
+   every .excarousel-page's own box gets inflated to match the tallest sibling, which corrupts scrollHeight
+   measurements taken in JS (resizeExCarousel below) — a short page would report the tall page's height
+   because its own box had already been stretched to match, defeating the JS height fix entirely. flex-start
+   keeps each page at its real natural height so scrollHeight reads a true, page-specific value. */
+.excarousel-track{display:flex;align-items:flex-start;transition:transform .25s ease;touch-action:pan-y;}
 .excarousel-page{flex:0 0 100%;min-width:0;}
 .excarousel-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px;}
 .excarousel-btn{background:var(--surface2);color:var(--accent-text);border:1px solid var(--border);width:34px;height:34px;
@@ -584,13 +589,15 @@ function groupExercisesIntoPages(exercises){
 // across everything EXCEPT actually navigating to a different day/week, which naturally uses a different
 // key and starts back at page 0 — matching "start your session from exercise 1" expectations.
 let exercisePageIndex = {};
-// The track is a flex row holding every page as a sibling, and flexbox's default cross-axis stretch means
-// the row (and so the whole .excarousel container) is always as tall as its TALLEST page — typically a
-// superset page stacking two full exercise blocks. Every shorter single-exercise page inherits that same
-// tall height even though only one page is visible at a time, which is what left a gap of dead space below
-// "Completed?" on short pages. CSS alone can't express "only size to the currently-visible child" for a flex
-// row, so this measures the current page's real content height and applies it to the container explicitly —
-// called on every navigation and once on initial render (from wireCarousels).
+// The track is a flex row holding every page as a sibling. A flex row's own cross-axis (height) size is
+// always driven by its TALLEST item regardless of align-items — typically a superset page stacking two full
+// exercise blocks — so CSS alone can't express "only size to the currently-visible child." This measures the
+// CURRENT page's real content height and applies it explicitly to the .excarousel wrapper (which clips via
+// overflow:hidden), called on every navigation and once on initial render (from wireCarousels). This only
+// works because .excarousel-track uses align-items:flex-start, not the flex default of stretch — stretch
+// would inflate every page's own box to match the tallest sibling, which would corrupt the scrollHeight read
+// below (a short page would report the tall page's height, since its own box had already been stretched to
+// match) and silently defeat this whole function.
 function resizeExCarousel(container){
   if(!container) return;
   const current = container.querySelector('.excarousel-page.current') || container.querySelector('.excarousel-page');
