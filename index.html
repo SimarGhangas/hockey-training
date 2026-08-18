@@ -203,6 +203,11 @@ const CARDIO_TARGETS = {
  "Interval":{"Wk1-2":"4 sets: 4min ON / 2min OFF — 80-90% max HR","Wk3-4":"6 sets: 2min ON / 1min OFF — 80-90% max HR","Wk5-6":"6 sets: 1min ON / 1min OFF — 80-90% max HR"}
 };
 const CARDIO_TYPES = Object.keys(CARDIO_TARGETS);
+// Types selectable ONLY from the "Log an extra activity" card, not from the weekly schedule or Today's
+// session picker — Simar asked for these as extra-logging options (e.g. cardio AND strength the same
+// day), not as a new plannable programmed slot. "Walk" is brand new (no CARDIO_TARGETS entry, since it's
+// never a prescribed/targeted session) and reuses the same field layout as Cardio — Steady.
+const EXTRA_CARDIO_TYPES = CARDIO_TYPES.concat(['Walk']);
 // Every day of the week is now user-assignable (Reference tab) rather than fixed — these are just the
 // types that CAN be scheduled, plus a sensible starting layout that mirrors the original fixed plan so
 // existing muscle memory (Tue=Workout1 etc.) doesn't get scrambled by the upgrade itself.
@@ -458,6 +463,12 @@ function renderToday(){
   // (DATA.extra) so it never collides with the primary DATA.activity record for a day picked AS one of
   // these three types.
   const extraRec = DATA.extra[dayKey] || {};
+  // Two field layouts share this one card, switched on the selected type: the team-activity layout
+  // (calories/distance/HR/duration, +opponent/result for Hockey Match) is unchanged from before; the
+  // cardio layout (HR/distance/time/RPE) is new and deliberately mirrors the primary Cardio — Steady
+  // form field-for-field, since Simar asked for "the same boxes as Cardio - Steady" for Walk specifically
+  // and it made sense to give Steady/Sprint-COD/Interval the identical treatment when logged as extras.
+  const extraIsCardio = EXTRA_CARDIO_TYPES.includes(extraRec.type);
   html += `<div class="card">
     <div class="skip-toggle">
       <div class="lbl">Log an extra activity</div>
@@ -465,25 +476,37 @@ function renderToday(){
     </div>
     ${extraRec.active ? `
       ${fieldHtml('Type', `<select data-k="extra" data-row="${dayKey}" data-f="type" onchange="onExtraTypeChange('${dayKey}',this.value)">
-        ${ACTIVITY_REASONS.map(r=>`<option ${extraRec.type===r?'selected':''}>${r}</option>`).join('')}</select>`)}
-      <div class="row2">
-        ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${extraRec.calories??''}">`)}
-        ${fieldHtml('Distance run (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${extraRec.distance??''}">`)}
-      </div>
-      <div class="row2">
-        ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="hr" value="${extraRec.hr??''}">`)}
-        ${fieldHtml('Duration (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${extraRec.duration??''}">`)}
-      </div>
-      ${extraRec.type==='Hockey Match' ? `
+        <optgroup label="Team activity">${ACTIVITY_REASONS.map(r=>`<option ${extraRec.type===r?'selected':''}>${r}</option>`).join('')}</optgroup>
+        <optgroup label="Cardio">${EXTRA_CARDIO_TYPES.map(r=>`<option ${extraRec.type===r?'selected':''}>${r}</option>`).join('')}</optgroup>
+      </select>`)}
+      ${extraIsCardio ? `
+        <div class="row3">
+          ${fieldHtml('Avg HR (bpm)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="hr" value="${extraRec.hr??''}">`)}
+          ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${extraRec.distance??''}">`)}
+          ${fieldHtml('Time (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${extraRec.duration??''}">`)}
+        </div>
+        ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="extra" data-row="${dayKey}" data-f="rpe" value="${extraRec.rpe??''}">`)}
+        <div style="font-size:11px;color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
+      ` : `
         <div class="row2">
-          ${fieldHtml('Opponent', `<input data-k="extra" data-row="${dayKey}" data-f="opponent" value="${esc(extraRec.opponent||'')}">`)}
-          ${fieldHtml('Result', `<select data-k="extra" data-row="${dayKey}" data-f="result">
-            <option value=""></option><option ${extraRec.result==='Win'?'selected':''}>Win</option>
-            <option ${extraRec.result==='Loss'?'selected':''}>Loss</option><option ${extraRec.result==='Draw'?'selected':''}>Draw</option></select>`)}
-        </div>` : ''}
+          ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${extraRec.calories??''}">`)}
+          ${fieldHtml('Distance run (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${extraRec.distance??''}">`)}
+        </div>
+        <div class="row2">
+          ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="hr" value="${extraRec.hr??''}">`)}
+          ${fieldHtml('Duration (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${extraRec.duration??''}">`)}
+        </div>
+        ${extraRec.type==='Hockey Match' ? `
+          <div class="row2">
+            ${fieldHtml('Opponent', `<input data-k="extra" data-row="${dayKey}" data-f="opponent" value="${esc(extraRec.opponent||'')}">`)}
+            ${fieldHtml('Result', `<select data-k="extra" data-row="${dayKey}" data-f="result">
+              <option value=""></option><option ${extraRec.result==='Win'?'selected':''}>Win</option>
+              <option ${extraRec.result==='Loss'?'selected':''}>Loss</option><option ${extraRec.result==='Draw'?'selected':''}>Draw</option></select>`)}
+          </div>` : ''}
+      `}
       ${fieldHtml('Completed?', ynPills('extra', dayKey, 'done', extraRec.done))}
       ${fieldHtml('Notes', `<input data-k="extra" data-row="${dayKey}" data-f="notes" value="${esc(extraRec.notes||'')}">`)}
-    ` : `<div style="font-size:11.5px;color:var(--text-dim)">Did extra football, hockey training, or play a match on top of what's picked above? Log it here.</div>`}
+    ` : `<div style="font-size:11.5px;color:var(--text-dim)">Did extra cardio, a walk, football, hockey training, or play a match on top of what's picked above? Log it here.</div>`}
   </div>`;
   if(extraRec.active && extraRec.type){
     html += `<div class="skip-banner" style="background:var(--success-dim);border-color:var(--success);color:var(--success)"><span>${esc(extraRec.type)} logged as an extra today</span></div>`;
@@ -720,8 +743,8 @@ function renderHistoryList(){
           entries.push({title:type+' — '+d, meta});
         }
         const extraRec = DATA.extra[`${week}_${di}`];
-        if(extraRec && extraRec.active && (extraRec.calories || extraRec.distance || extraRec.hr || extraRec.duration || extraRec.done)){
-          const meta = `${extraRec.type==='Hockey Match'&&extraRec.opponent?'vs '+extraRec.opponent+' ':''}${extraRec.type==='Hockey Match'&&extraRec.result?'('+extraRec.result+') ':''}${extraRec.distance?extraRec.distance+'km ':''}${extraRec.duration?extraRec.duration+'min ':''}${extraRec.hr?extraRec.hr+'bpm ':''}${extraRec.calories?extraRec.calories+'kcal ':''}${extraRec.done==='Y'?'✓':''}`;
+        if(extraRec && extraRec.active && (extraRec.calories || extraRec.distance || extraRec.hr || extraRec.duration || extraRec.rpe!==undefined && extraRec.rpe!=='' || extraRec.done)){
+          const meta = `${extraRec.type==='Hockey Match'&&extraRec.opponent?'vs '+extraRec.opponent+' ':''}${extraRec.type==='Hockey Match'&&extraRec.result?'('+extraRec.result+') ':''}${extraRec.distance?extraRec.distance+'km ':''}${extraRec.duration?extraRec.duration+'min ':''}${extraRec.hr?extraRec.hr+'bpm ':''}${extraRec.calories?extraRec.calories+'kcal ':''}${extraRec.rpe!==undefined&&extraRec.rpe!==''?'RPE '+extraRec.rpe+' ':''}${extraRec.done==='Y'?'✓':''}`;
           entries.push({title:(extraRec.type||'Activity')+' (extra) — '+d, meta});
         }
       });
@@ -758,7 +781,15 @@ function renderHistoryList(){
 // as completed, per the "counts as completed" design.
 function countDone(obj, field){ let d=0; Object.values(obj).forEach(r=>{ if(r && r[field]==='Y') d++; }); return d; }
 function isGenuineSkip(week, dayIndex){ const r = DATA.skip[`${week}_${dayIndex}`]; return !!(r && r.skipped); }
-function isActivityLogged(week, dayIndex){ const r = DATA.extra[`${week}_${dayIndex}`]; return !!(r && r.active); }
+// Substitution credit is deliberately scoped to the three team-activity types (Football/Hockey Training/
+// Hockey Match) only — a real match or training session plausibly stands in for a missed programmed day.
+// A cardio/Walk extra (EXTRA_CARDIO_TYPES) must NOT trigger this: a short recovery walk auto-crediting a
+// missed heavy strength day would quietly flatter the adherence numbers. Confirmed with Simar before
+// building this — cardio/walk extras are purely additive, never a substitute.
+function isActivityLogged(week, dayIndex){
+  const r = DATA.extra[`${week}_${dayIndex}`];
+  return !!(r && r.active && ACTIVITY_REASONS.includes(r.type));
+}
 // Every day can be freely overridden (see effectiveTypeFor), so a session type is no longer pinned to
 // one fixed day of the week — it can move around, appear on a different day some weeks, or not appear
 // at all if overridden away. Adherence is measured against whichever day (if any) EFFECTIVELY carried
@@ -875,11 +906,16 @@ function trainingBreakdown(){
     football: activityCount('Football'),
     training: activityCount('Hockey Training'),
     match: activityCount('Hockey Match'),
+    // Extra Steady/Sprint-COD/Interval/Walk sessions logged via the "Log an extra activity" card — summed
+    // separately from `cardio` above rather than folded into it, because `cardio` specifically measures
+    // adherence to the ONE programmed cardio day/week; merging the two would conflate "stuck to the plan"
+    // with "did more than the plan" and make the Cardio-done stat impossible to read honestly.
+    extraCardio: EXTRA_CARDIO_TYPES.reduce((sum,t)=>sum+activityCount(t),0),
   };
 }
 function activeTrainingDays(){
   const b = trainingBreakdown();
-  return b.strength + b.cardio + b.football + b.training + b.match;
+  return b.strength + b.cardio + b.football + b.training + b.match + b.extraCardio;
 }
 function weeklyCardioDistance(week){
   let total=0,count=0;
@@ -1042,6 +1078,7 @@ function renderDashboard(){
     <div class="card"><div class="label">Football sessions</div><div class="value" style="color:var(--accent-text)">${breakdown.football}</div></div>
     <div class="card"><div class="label">Hockey training sessions</div><div class="value" style="color:var(--accent-text)">${breakdown.training}</div></div>
     <div class="card"><div class="label">Matches played</div><div class="value" style="color:var(--accent-text)">${breakdown.match}</div></div>
+    <div class="card"><div class="label">Extra cardio / walk sessions</div><div class="value" style="color:var(--accent-text)">${breakdown.extraCardio}</div></div>
     <div class="card"><div class="label">Total training days logged</div><div class="value">${activeTrainingDays()}</div></div>
   </div>
   <div class="card">
@@ -1102,6 +1139,7 @@ function renderDashboard(){
     {label:'Football', value:breakdown.football, color:'#5FA8FF'},
     {label:'Hockey Training', value:breakdown.training, color:'#FFB020'},
     {label:'Hockey Match', value:breakdown.match, color:'#FF6F85'},
+    {label:'Extra Cardio/Walk', value:breakdown.extraCardio, color:'#9B6DFF'},
   ]);
   drawLineChart('load-chart', weeks, weeks.map(weeklyTrainingLoad), '#FF8A3D');
   renderStrengthChart(selectedStrengthEx.key, selectedStrengthEx.slot);
@@ -1268,8 +1306,19 @@ async function forceRefresh(){
       await Promise.all(regs.map(r=>r.unregister()));
     }
   }catch(e){} // best-effort — if the Cache/SW APIs aren't available or throw, still fall through to reload
-  location.reload();
+  // ROOT CAUSE of "Refresh app" not actually picking up a new upload: location.reload() re-requests the
+  // exact same URL. On iOS, a home-screen "Add to Home Screen" app runs in a standalone WKWebView that
+  // keeps its own navigation-level cache for that URL, separate from (and not cleared by) the Cache
+  // Storage API or service-worker unregistration above — so reload() could still hand back the stale
+  // document even once sw.js's own cache is genuinely empty. That's why only deleting and re-adding the
+  // Home Screen icon (which forces a fresh Safari tab, a different cache context) ever actually worked.
+  // Fix: navigate to a cache-busted URL instead of reloading the same one — a changing query string makes
+  // this a genuinely different request the stale cache has no entry for, so it can't be served from it.
+  location.replace(cacheBustedReloadUrl());
 }
+// Split out as its own pure function (no side effect) so the URL-construction logic can be unit tested
+// directly, rather than needing to stub the actual browser navigation call.
+function cacheBustedReloadUrl(){ return location.pathname + '?refresh=' + Date.now() + location.hash; }
 // Prefer the native Share Sheet (Web Share API with a file) over a plain download link. On iOS a plain
 // download just lands in Safari's Downloads folder, which is easy to lose track of; the Share Sheet lets
 // the user explicitly save to iCloud Drive, AirDrop it to another device, or email it — all genuinely
