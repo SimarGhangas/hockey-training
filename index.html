@@ -103,6 +103,16 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
 .timer-row .timer-btn{margin:0;flex:2;}
 .timer-row .timer-pause{flex:1;}
 .timer-row .timer-reset{flex:1;background:var(--surface2);color:var(--text-dim);}
+.excarousel{overflow:hidden;margin:-4px 0 10px;}
+.excarousel-track{display:flex;transition:transform .25s ease;touch-action:pan-y;}
+.excarousel-page{flex:0 0 100%;min-width:0;}
+.excarousel-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px;}
+.excarousel-btn{background:var(--surface2);color:var(--accent-text);border:1px solid var(--border);width:34px;height:34px;
+  border-radius:50%;font-size:16px;font-weight:700;font-family:inherit;flex-shrink:0;}
+.excarousel-btn:disabled{opacity:0.25;}
+.excarousel-dots{display:flex;gap:6px;align-items:center;}
+.excarousel-dots .dot{width:7px;height:7px;border-radius:50%;background:var(--border);flex-shrink:0;}
+.excarousel-dots .dot.active{background:var(--accent);width:16px;border-radius:4px;}
 .setrow{border-top:1px dashed var(--border);padding-top:10px;margin-top:10px;}
 .setrow:first-child{border-top:none;padding-top:0;margin-top:0;}
 .setrow .setno{font-size:12px;font-weight:700;color:var(--text-dim);display:flex;justify-content:space-between;margin-bottom:6px;}
@@ -545,6 +555,79 @@ function bindField(el){
 // logged yet" checks elsewhere, e.g. the schema-migration wipe test). Existing logged sets are read through
 // as-is; missing slots are padded with a fresh {} for rendering only. The real DATA[key][rowKey].sets array
 // only ever gets created lazily by bindField, at the moment a field is actually edited.
+// Groups a workout's exercise list into swipeable carousel "pages": consecutive exercises sharing the same
+// non-null superset id (e.g. "4A"/"4B" both tagged sup="4") land on ONE page together, since a superset is
+// meant to be logged back-to-back without swiping away mid-set; anything with sup===null gets its own page.
+// This is driven purely by the sup field already in WORKOUT1/2_EXERCISES, so it needs no hardcoded slot IDs
+// and keeps working if the exercise list itself changes later.
+function groupExercisesIntoPages(exercises){
+  const pages = [];
+  let i = 0;
+  while(i < exercises.length){
+    const sup = exercises[i][1];
+    if(sup){
+      const group = [exercises[i]];
+      let j = i+1;
+      while(j < exercises.length && exercises[j][1]===sup){ group.push(exercises[j]); j++; }
+      pages.push(group);
+      i = j;
+    } else {
+      pages.push([exercises[i]]);
+      i++;
+    }
+  }
+  return pages;
+}
+// Which carousel page each workout instance (keyed "{w1|w2}_{week}") is currently showing — tracked in
+// memory only, same pattern as `openCards`. Swiping/tapping never triggers a full renderToday() re-render
+// (that would kill any running rest/hold timer and re-collapse every other card), so this state persists
+// across everything EXCEPT actually navigating to a different day/week, which naturally uses a different
+// key and starts back at page 0 — matching "start your session from exercise 1" expectations.
+let exercisePageIndex = {};
+function exCarouselGo(posKey, newPage, pagesLen){
+  newPage = Math.max(0, Math.min(pagesLen-1, newPage));
+  exercisePageIndex[posKey] = newPage;
+  const track = document.getElementById('excarousel-track-'+posKey);
+  if(track) track.style.transform = 'translateX(-'+(newPage*100)+'%)';
+  const container = document.getElementById('excarousel-'+posKey);
+  if(!container) return;
+  container.querySelectorAll('.excarousel-page').forEach((p,i)=>p.classList.toggle('current', i===newPage));
+  container.querySelectorAll('.excarousel-dots .dot').forEach((d,i)=>d.classList.toggle('active', i===newPage));
+  const btns = container.querySelectorAll('.excarousel-btn');
+  if(btns[0]) btns[0].disabled = (newPage===0);
+  if(btns[1]) btns[1].disabled = (newPage===pagesLen-1);
+}
+// Prev/Next buttons call this with a fixed -1/+1 rather than baking in a target page number, so their
+// onclick never needs rewriting after a navigation (they always mean "one from wherever we are now").
+function exCarouselStep(posKey, delta, pagesLen){
+  exCarouselGo(posKey, (exercisePageIndex[posKey]||0) + delta, pagesLen);
+}
+// Real swipe gesture support, layered on top of the same exCarouselGo/Step functions the Prev/Next buttons
+// use — Pointer Events cover touch AND mouse/trackpad in one listener set, no separate touch-event code
+// path needed. touch-action:pan-y on the track (set in CSS) tells the browser to leave vertical scrolling
+// alone and let this handler own horizontal gestures instead of fighting over them.
+function wireCarousels(container){
+  container.querySelectorAll('.excarousel').forEach(el=>{
+    const posKey = el.dataset.key;
+    const pagesLen = parseInt(el.dataset.pages, 10);
+    let startX=null, startY=null, dragging=false, horizontal=false;
+    el.addEventListener('pointerdown', e=>{ startX=e.clientX; startY=e.clientY; dragging=true; horizontal=false; });
+    el.addEventListener('pointermove', e=>{
+      if(!dragging || startX==null) return;
+      if(Math.abs(e.clientX-startX) > Math.abs(e.clientY-startY)) horizontal = true;
+    });
+    el.addEventListener('pointerup', e=>{
+      if(!dragging || startX==null){ dragging=false; return; }
+      const dx = e.clientX-startX, dy = e.clientY-startY;
+      dragging = false;
+      if(horizontal && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)){
+        exCarouselStep(posKey, dx < 0 ? 1 : -1, pagesLen);
+      }
+      startX = null; startY = null;
+    });
+    el.addEventListener('pointercancel', ()=>{ dragging=false; startX=null; });
+  });
+}
 function getSetsForRender(key, rowKey, count){
   const existing = (DATA[key][rowKey] && DATA[key][rowKey].sets) || [];
   const out = [];
@@ -891,7 +974,11 @@ function renderToday(){
     const idx = block==="Wk1-2"?0:block==="Wk3-4"?1:2;
     const sessionSummary = `Strength — Workout ${isW1?1:2}`;
     html += `<details class="card" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">${sessionSummary}</span><span class="tag">${block}</span></summary><div class="card-body">`;
-    exercises.forEach(ex=>{
+    // Renders one exercise's full logging block (used-select, per-set rows, notes, completed pill) — pulled
+    // out as a local function (instead of the old flat exercises.forEach) so it can be called once per
+    // exercise INSIDE whichever carousel page that exercise's superset group lands on, without repeating
+    // the key/week/block/idx closure variables through a parameter list.
+    function renderExerciseBlock(ex){
       const [slot,sup,gymEx,gymLink,homeEx,homeLink,t12,t34,t56] = ex;
       const targets=[t12,t34,t56][idx];
       const rowKey = `${week}_${slot}`;
@@ -901,7 +988,7 @@ function renderToday(){
       const isPR = isNewPRThisWeek(key, slot, week);
       const setCount = parseInt(targets[0],10) || 1;
       const sets = getSetsForRender(key, rowKey, setCount);
-      html += `<div class="exrow">
+      return `<div class="exrow">
         <div class="exname">${slot}${sup?' &middot; Superset '+sup:''} — ${esc(gymEx)} / ${esc(homeEx)}${isPR?' <span style="color:var(--success)">&#127881; New PR</span>':''}
           &nbsp;<a class="demo" href="${gymLink}" target="_blank" rel="noopener">gym&#9654;</a> &middot;
           <a class="demo" href="${homeLink}" target="_blank" rel="noopener">home&#9654;</a></div>
@@ -932,7 +1019,25 @@ function renderToday(){
         ${fieldHtml('Notes', `<input data-k="${key}" data-row="${rowKey}" data-f="notes" value="${esc(rec.notes||'')}">`)}
         ${fieldHtml('Completed?', ynPills(key, rowKey, 'done', rec.done))}
       </div>`;
-    });
+    }
+    // Swipeable carousel: one page per exercise, except superset pairs (4A+4B, 5A+5B etc — same non-null
+    // `sup` id) which share a page so you're not swiping away mid-superset. Prev/Next buttons + dots give a
+    // tap-based fallback alongside the real swipe gesture wired up by wireCarousels() after render.
+    const pages = groupExercisesIntoPages(exercises);
+    const posKey = `${key}_${week}`;
+    const curPage = Math.min(exercisePageIndex[posKey]||0, pages.length-1);
+    html += `<div class="excarousel" data-key="${posKey}" data-pages="${pages.length}" id="excarousel-${posKey}">
+      <div class="excarousel-track" id="excarousel-track-${posKey}" style="transform:translateX(-${curPage*100}%)">
+        ${pages.map((pageExercises,pageIdx)=>`<div class="excarousel-page ${pageIdx===curPage?'current':''}">
+          ${pageExercises.map(renderExerciseBlock).join('')}
+        </div>`).join('')}
+      </div>
+      ${pages.length>1 ? `<div class="excarousel-nav">
+        <button type="button" class="excarousel-btn" onclick="exCarouselStep('${posKey}',-1,${pages.length})" ${curPage===0?'disabled':''}>&#8249;</button>
+        <div class="excarousel-dots">${pages.map((_,i)=>`<span class="dot ${i===curPage?'active':''}" onclick="exCarouselGo('${posKey}',${i},${pages.length})"></span>`).join('')}</div>
+        <button type="button" class="excarousel-btn" onclick="exCarouselStep('${posKey}',1,${pages.length})" ${curPage===pages.length-1?'disabled':''}>&#8250;</button>
+      </div>` : ''}
+    </div>`;
     const sessKey = `${key}_${week}`;
     const sessRec = DATA.session[sessKey] || {};
     html += `<div class="exrow">
@@ -1079,6 +1184,7 @@ function renderToday(){
 
   panel.innerHTML = html;
   wireCard(panel);
+  wireCarousels(panel);
 }
 function shiftDay(n){
   const next = addDays(currentDate, n);
