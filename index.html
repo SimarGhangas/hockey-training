@@ -103,7 +103,7 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
 .timer-row .timer-btn{margin:0;flex:2;}
 .timer-row .timer-pause{flex:1;}
 .timer-row .timer-reset{flex:1;background:var(--surface2);color:var(--text-dim);}
-.excarousel{overflow:hidden;margin:-4px 0 10px;}
+.excarousel{overflow:hidden;margin:-4px 0 10px;transition:height .25s ease;}
 .excarousel-track{display:flex;transition:transform .25s ease;touch-action:pan-y;}
 .excarousel-page{flex:0 0 100%;min-width:0;}
 .excarousel-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px;}
@@ -584,6 +584,19 @@ function groupExercisesIntoPages(exercises){
 // across everything EXCEPT actually navigating to a different day/week, which naturally uses a different
 // key and starts back at page 0 — matching "start your session from exercise 1" expectations.
 let exercisePageIndex = {};
+// The track is a flex row holding every page as a sibling, and flexbox's default cross-axis stretch means
+// the row (and so the whole .excarousel container) is always as tall as its TALLEST page — typically a
+// superset page stacking two full exercise blocks. Every shorter single-exercise page inherits that same
+// tall height even though only one page is visible at a time, which is what left a gap of dead space below
+// "Completed?" on short pages. CSS alone can't express "only size to the currently-visible child" for a flex
+// row, so this measures the current page's real content height and applies it to the container explicitly —
+// called on every navigation and once on initial render (from wireCarousels).
+function resizeExCarousel(container){
+  if(!container) return;
+  const current = container.querySelector('.excarousel-page.current') || container.querySelector('.excarousel-page');
+  if(!current) return;
+  container.style.height = current.scrollHeight + 'px';
+}
 function exCarouselGo(posKey, newPage, pagesLen){
   newPage = Math.max(0, Math.min(pagesLen-1, newPage));
   exercisePageIndex[posKey] = newPage;
@@ -596,6 +609,7 @@ function exCarouselGo(posKey, newPage, pagesLen){
   const btns = container.querySelectorAll('.excarousel-btn');
   if(btns[0]) btns[0].disabled = (newPage===0);
   if(btns[1]) btns[1].disabled = (newPage===pagesLen-1);
+  resizeExCarousel(container);
 }
 // Prev/Next buttons call this with a fixed -1/+1 rather than baking in a target page number, so their
 // onclick never needs rewriting after a navigation (they always mean "one from wherever we are now").
@@ -608,6 +622,7 @@ function exCarouselStep(posKey, delta, pagesLen){
 // alone and let this handler own horizontal gestures instead of fighting over them.
 function wireCarousels(container){
   container.querySelectorAll('.excarousel').forEach(el=>{
+    resizeExCarousel(el);
     const posKey = el.dataset.key;
     const pagesLen = parseInt(el.dataset.pages, 10);
     let startX=null, startY=null, dragging=false, horizontal=false;
@@ -2165,6 +2180,17 @@ renderReference();
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
 }
+// Recompute carousel heights on viewport resize (device rotation, or the mobile browser's URL bar
+// collapsing/expanding) since content can reflow to a different height at a different width. Debounced —
+// resize fires continuously while dragging/rotating, and re-measuring every .excarousel on every single
+// event would be wasteful.
+let resizeExTimer = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeExTimer);
+  resizeExTimer = setTimeout(()=>{
+    document.querySelectorAll('.excarousel').forEach(resizeExCarousel);
+  }, 150);
+});
 </script>
 </body>
 </html>
