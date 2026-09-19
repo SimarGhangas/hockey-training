@@ -206,6 +206,9 @@ nav.bottomnav button.active::after{content:'';position:absolute;top:6px;left:50%
 .bar-row .lbl{margin-bottom:4px;font-weight:600;}
 .bar-track{background:var(--surface2);border-radius:0;height:10px;overflow:hidden;}
 .bar-fill{background:var(--link);height:100%;border-radius:0;}
+#hist-search{width:100%;font-family:inherit;font-size:var(--fs-ui);padding:10px 11px;
+  border:1px solid var(--text-faint);border-radius:0;background:var(--surface);color:var(--text);
+  margin-bottom:10px;}
 .chip-row{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;}
 .chip{flex-shrink:0;padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);
   font-size:var(--fs-body);font-weight:600;color:var(--text-dim);}
@@ -215,6 +218,13 @@ nav.bottomnav button.active::after{content:'';position:absolute;top:6px;left:50%
   font-size:var(--fs-body);font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;}
 .hist-week summary::-webkit-details-marker{display:none;}
 .hist-week summary .cnt{color:var(--text-dim);font-weight:600;font-size:var(--fs-caption);}
+.exhist{border-top:1px dashed var(--border);margin-top:8px;padding-top:6px;}
+.exhist-row{display:flex;justify-content:space-between;gap:12px;font-size:var(--fs-caption);
+  color:var(--text-dim);padding:3px 0;}
+.hist-day{font-size:var(--fs-caption);font-weight:700;color:var(--text-dim);text-transform:uppercase;
+  letter-spacing:.04em;padding:10px 13px 4px;background:var(--surface);
+  border-left:1px solid var(--border);border-right:1px solid var(--border);}
+.hist-day-group:last-child .hist-entry:last-child{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
 .hist-entry{background:var(--surface);border:1px solid var(--border);border-top:none;padding:10px 13px;font-size:var(--fs-body);}
 .hist-entry:last-child{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
 .hist-entry .hd{display:flex;justify-content:space-between;font-weight:700;margin-bottom:3px;}
@@ -314,7 +324,7 @@ const FONT_MICRO   = '10px Barlow';    // --fs-micro: gridline values, "no data"
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-09-19 14:50';
+const APP_BUILD = '2026-09-19 15:30';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -1725,16 +1735,79 @@ function onExtraTypeChange(dayKey, val){
 
 /* ================= HISTORY VIEW ================= */
 let historyFilter = 'all';
+// Free-text search across entry titles and metas. Deliberately independent of historyFilter: the
+// chips narrow by KIND, search narrows by CONTENT, and combining them is useful ("Cardio" chip plus
+// "5km"). setHistoryQuery re-renders only the LIST — re-rendering the panel would destroy the input
+// and drop focus on every keystroke.
+let historyQuery = '';
+function setHistoryQuery(v){ historyQuery = String(v||'').toLowerCase(); renderHistoryList(); }
 function renderHistory(){
   const panel = document.getElementById('panel-history');
   const chips = ['all','strength','cardio','mobility','body','injury','activity','skipped','tests','readiness','supplements'];
   let html = `<h2>History</h2>
+  <input id="hist-search" type="search" placeholder="Search history&hellip;" value="${esc(historyQuery)}"
+         oninput="setHistoryQuery(this.value)" autocomplete="off">
   <div class="chip-row">${chips.map(c=>`<div class="chip ${historyFilter===c?'active':''}" onclick="setHistoryFilter('${c}')">${c[0].toUpperCase()+c.slice(1)}</div>`).join('')}</div>
   <div id="history-list"></div>`;
   panel.innerHTML = html;
   renderHistoryList();
 }
 function setHistoryFilter(c){ historyFilter = c; renderHistory(); }
+// Strength and cardio rows are keyed by exercise slot / cardio type, not by day — so the day they
+// happened has to be derived from what was PICKED that week. Mirrors firstDayEachWeekFor(), which does
+// the same lookup for adherence, rather than inventing a second notion of "which day was that".
+// Returns null when that type was never picked in the week, which the caller treats as week-level.
+// "7 entries" reads identically on every week, so finding the right one means opening them all.
+// Counting by KIND turns the header into a real index. Kinds are derived from the entry titles that
+// renderHistoryList() has already built, so this stays in step with whatever it emits rather than
+// duplicating its rules. Note a single Workout 1 session emits one entry per exercise row plus a
+// session-RPE row, so it counts as several "strength" — acceptable for an at-a-glance header, whose
+// job is WHICH KINDS, not an exact session count.
+// The most common strength question is "what did I lift last time on this?" — answerable today only
+// as a line on the Dashboard's progression chart, never as readable numbers. Reads the same per-set
+// data the chart and the PR flag already use, so the three can never disagree.
+function exerciseHistoryHtml(key, rowKey){
+  const rows = [];
+  for(let week = WEEKS; week >= 1; week--){
+    const rec = DATA[key][`${week}_${rowKey}`];
+    const sets = rec && rec.sets ? rec.sets.filter(Boolean) : [];
+    if(!sets.length) continue;
+    const parts = sets.map(st => st.seconds ? `${st.seconds}s`
+                    : `${st.weight ?? '-'}kg\u00d7${st.reps ?? '-'}`);
+    rows.push(`<div class="exhist-row"><span>Wk ${week}</span><span>${esc(parts.join(', '))}</span></div>`);
+  }
+  return rows.length ? rows.join('') : `<div class="exhist-row"><span>No sets logged yet</span></div>`;
+}
+// Built lazily on first reveal: rendering History must not compute 25 weeks of history for every
+// strength row up front, most of which is never looked at.
+function toggleExerciseHistory(key, rowKey, id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.hidden = !el.hidden;
+  if(!el.hidden && !el.innerHTML) el.innerHTML = exerciseHistoryHtml(key, rowKey);
+}
+function weekSummaryText(entries){
+  const kinds = {};
+  entries.forEach(e=>{
+    const t = e.title;
+    let kind = null;
+    if(/^Workout [12]/.test(t))         kind = 'strength';
+    else if(/^Cardio/.test(t))          kind = 'cardio';
+    else if(/^Hockey Match/.test(t))    kind = 'match';
+    else if(/^Hockey Training/.test(t)) kind = 'training';
+    else if(/^Football/.test(t))        kind = 'football';
+    else if(/^Skipped/.test(t))         kind = 'skipped';
+    if(kind) kinds[kind] = (kinds[kind] || 0) + 1;
+  });
+  const parts = Object.keys(kinds).map(k=>kinds[k] + ' ' + k);
+  return parts.length ? parts.join(' \u00b7 ') : entries.length + ' logged';
+}
+function dayIndexForType(week, type){
+  for(let di = 0; di < 7; di++){
+    if(effectiveTypeFor(week, di) === type) return di;
+  }
+  return null;
+}
 function renderHistoryList(){
   const el = document.getElementById('history-list');
   let out = '';
@@ -1746,11 +1819,11 @@ function renderHistoryList(){
           if(!rowKey.startsWith(week+'_')) return;
           const hasSetData = rec && Array.isArray(rec.sets) && rec.sets.some(s=>s && (s.weight!=null&&s.weight!=='' || s.reps!=null&&s.reps!=='' || s.seconds!=null&&s.seconds!==''));
           if(!rec || (!rec.used && !rec.actual && !rec.weight && !rec.done && !hasSetData)) return;
-          entries.push({title:(k==='w1'?'Workout 1':'Workout 2')+' — '+rowKey.split('_')[1], meta:`${rec.used||''} ${summarizeSetsMeta(k,rowKey.split('_')[1],rec)} ${rec.done==='Y'?'✓':''}`});
+          entries.push({dayIndex:dayIndexForType(week,k), exKey:k, exRow:rowKey.split('_')[1], title:(k==='w1'?'Workout 1':'Workout 2')+' — '+rowKey.split('_')[1], meta:`${rec.used||''} ${summarizeSetsMeta(k,rowKey.split('_')[1],rec)} ${rec.done==='Y'?'✓':''}`});
         });
         const sessRec = DATA.session[`${k}_${week}`];
         if(sessRec && ((sessRec.rpe!==undefined && sessRec.rpe!=='') || sessRec.duration || sessRec.hr || sessRec.calories)){
-          entries.push({title:(k==='w1'?'Workout 1':'Workout 2')+' — Session RPE', meta:`${sessRec.rpe!==undefined&&sessRec.rpe!==''?'RPE '+sessRec.rpe:''} ${sessRec.duration?sessRec.duration+'min':''} ${sessRec.hr?sessRec.hr+'bpm':''} ${sessRec.calories?sessRec.calories+'kcal':''}`});
+          entries.push({dayIndex:dayIndexForType(week,k), title:(k==='w1'?'Workout 1':'Workout 2')+' — Session RPE', meta:`${sessRec.rpe!==undefined&&sessRec.rpe!==''?'RPE '+sessRec.rpe:''} ${sessRec.duration?sessRec.duration+'min':''} ${sessRec.hr?sessRec.hr+'bpm':''} ${sessRec.calories?sessRec.calories+'kcal':''}`});
         }
       });
     }
@@ -1758,57 +1831,57 @@ function renderHistoryList(){
       CARDIO_TYPES.forEach(type=>{
         const rec = DATA.cardio[`${week}_${type}`];
         if(!rec || (!rec.dist && !rec.dur && !rec.hr && !rec.calories && !rec.done)) return;
-        entries.push({title:'Cardio — '+type, meta:`${rec.dist?rec.dist+'km':''} ${rec.dur?rec.dur+'min':''} ${rec.hr?rec.hr+'bpm':''} ${rec.calories?rec.calories+'kcal':''} ${rec.rpe!==undefined&&rec.rpe!==''?'RPE '+rec.rpe:''} ${rec.done==='Y'?'✓':''}`});
+        entries.push({dayIndex:dayIndexForType(week,type), title:'Cardio — '+type, meta:`${rec.dist?rec.dist+'km':''} ${rec.dur?rec.dur+'min':''} ${rec.hr?rec.hr+'bpm':''} ${rec.calories?rec.calories+'kcal':''} ${rec.rpe!==undefined&&rec.rpe!==''?'RPE '+rec.rpe:''} ${rec.done==='Y'?'✓':''}`});
       });
     }
     if(historyFilter==='all'||historyFilter==='mobility'){
-      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
+      DAY_INDEXES.forEach(di=>{
         const rec = DATA.mobility[`${week}_${di}`];
         if(!rec || (!rec.full && !rec.quick)) return;
-        entries.push({title:'Mobility — '+d, meta:`Full:${rec.full||'-'} Quick:${rec.quick||'-'} Tightness:${rec.tight??'-'}`});
+        entries.push({dayIndex:di, title:'Mobility', meta:`Full:${rec.full||'-'} Quick:${rec.quick||'-'} Tightness:${rec.tight??'-'}`});
       });
     }
     if(historyFilter==='all'||historyFilter==='body'){
       const rec = DATA.body[String(week)];
-      if(rec && (rec.weight || rec.rhr)) entries.push({title:'Body check-in', meta:`${rec.weight?rec.weight+'kg':''} ${rec.rhr?rec.rhr+'bpm RHR':''}`});
+      if(rec && (rec.weight || rec.rhr)) entries.push({dayIndex:null, title:'Body check-in', meta:`${rec.weight?rec.weight+'kg':''} ${rec.rhr?rec.rhr+'bpm RHR':''}`});
     }
     if(historyFilter==='all'||historyFilter==='injury'){
-      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
+      DAY_INDEXES.forEach(di=>{
         const rec = DATA.injury[`${week}_${di}`];
         if(!rec) return;
-        if(rec.type) entries.push({title:'Injury — '+d, meta:`${rec.type} · severity ${rec.severity??'-'} · ${rec.status||'-'}`});
+        if(rec.type) entries.push({dayIndex:di, title:'Injury', meta:`${rec.type} · severity ${rec.severity??'-'} · ${rec.status||'-'}`});
       });
     }
     if(historyFilter==='all'||historyFilter==='activity'){
-      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
+      DAY_INDEXES.forEach(di=>{
         const rec = DATA.activity[`${week}_${di}`];
         if(rec && (rec.calories || rec.distance || rec.hr || rec.duration || rec.done)){
           const type = effectiveTypeFor(week, di) || 'Activity';
           const meta = `${type==='Hockey Match'&&rec.opponent?'vs '+rec.opponent+' ':''}${type==='Hockey Match'&&rec.result?'('+rec.result+') ':''}${rec.distance?rec.distance+'km ':''}${rec.duration?rec.duration+'min ':''}${rec.hr?rec.hr+'bpm ':''}${rec.calories?rec.calories+'kcal ':''}${rec.done==='Y'?'✓':''}`;
-          entries.push({title:type+' — '+d, meta});
+          entries.push({dayIndex:di, title:type, meta});
         }
         const extraRec = DATA.extra[`${week}_${di}`];
         if(extraRec && extraRec.active && (extraRec.calories || extraRec.distance || extraRec.hr || extraRec.duration || extraRec.rpe!==undefined && extraRec.rpe!=='' || extraRec.done)){
           const meta = `${extraRec.type==='Hockey Match'&&extraRec.opponent?'vs '+extraRec.opponent+' ':''}${extraRec.type==='Hockey Match'&&extraRec.result?'('+extraRec.result+') ':''}${extraRec.distance?extraRec.distance+'km ':''}${extraRec.duration?extraRec.duration+'min ':''}${extraRec.hr?extraRec.hr+'bpm ':''}${extraRec.calories?extraRec.calories+'kcal ':''}${extraRec.rpe!==undefined&&extraRec.rpe!==''?'RPE '+extraRec.rpe+' ':''}${extraRec.done==='Y'?'✓':''}`;
-          entries.push({title:(extraRec.type||'Activity')+' (extra) — '+d, meta});
+          entries.push({dayIndex:di, title:(extraRec.type||'Activity')+' (extra)', meta});
         }
       });
     }
     if(historyFilter==='all'||historyFilter==='skipped'){
-      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
+      DAY_INDEXES.forEach(di=>{
         const rec = DATA.skip[`${week}_${di}`];
         if(!rec || !rec.skipped) return;
-        entries.push({title:'Skipped — '+d, meta:rec.reason||'Rest'});
+        entries.push({dayIndex:di, title:'Skipped', meta:rec.reason||'Rest'});
       });
     }
     if((historyFilter==='all'||historyFilter==='tests') && [1,6,12,14,19,25].includes(week)){
       const t = DATA.tests[String(week)];
       if(t && (t.sprint||t.cod||t.jump||t.run)){
-        entries.push({title:'Fitness Test — Week '+week, meta:`${t.sprint?'Sprint '+t.sprint+'s':''} ${t.cod?'505 '+t.cod+'s':''} ${t.jump?'Jump '+t.jump+'cm':''} ${t.run?'Cooper '+t.run+'m':''}`});
+        entries.push({dayIndex:null, title:'Fitness Test — Week '+week, meta:`${t.sprint?'Sprint '+t.sprint+'s':''} ${t.cod?'505 '+t.cod+'s':''} ${t.jump?'Jump '+t.jump+'cm':''} ${t.run?'Cooper '+t.run+'m':''}`});
       }
     }
     if(historyFilter==='all'||historyFilter==='readiness'){
-      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
+      DAY_INDEXES.forEach(di=>{
         const r = DATA.readiness[`${week}_${di}`];
         if(!r) return;
         const parts = [];
@@ -1817,21 +1890,43 @@ function renderHistoryList(){
         if(r.stress) parts.push('Stress '+r.stress);
         if(r.motivation) parts.push('Motivation '+r.motivation);
         if(!parts.length) return;
-        entries.push({title:'Readiness — '+d, meta:parts.join(' · ')});
+        entries.push({dayIndex:di, title:'Readiness', meta:parts.join(' · ')});
       });
     }
     if(historyFilter==='all'||historyFilter==='supplements'){
-      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
+      DAY_INDEXES.forEach(di=>{
         const rec = DATA.supplements[`${week}_${di}`];
         if(!rec || !Object.keys(rec).length) return;
         const stack = supplementScheduleFor(effectiveTypeFor(week, di));
         const takenCount = stack.filter(item=>rec[item.id]==='Y').length;
-        entries.push({title:'Supplements — '+d, meta:`${takenCount}/${stack.length} taken`});
+        entries.push({dayIndex:di, title:'Supplements', meta:`${takenCount}/${stack.length} taken`});
       });
     }
+    if(historyQuery){
+      entries = entries.filter(e => (e.title + ' ' + e.meta).toLowerCase().indexOf(historyQuery) > -1);
+    }
     if(!entries.length) continue;
-    out += `<details class="hist-week"><summary>Week ${week} <span class="cnt">${entries.length} entries</span></summary>
-      ${entries.map(e=>`<div class="hist-entry"><div class="hd">${esc(e.title)}</div><div class="meta">${esc(e.meta.trim()||'—')}</div></div>`).join('')}
+    // Bucket by day. Days run newest-first (6 -> 0) so the whole list, weeks included, reads strictly
+    // reverse-chronological like a log. Entries with no day (body check-in, fitness tests) are genuinely
+    // week-level and get their own group at the end rather than being guessed into a day.
+    const byDay = {};
+    entries.forEach(e=>{
+      const k = (e.dayIndex===null || e.dayIndex===undefined) ? 'week' : e.dayIndex;
+      (byDay[k] = byDay[k] || []).push(e);
+    });
+    const dayKeys = Object.keys(byDay).filter(k=>k!=='week').map(Number).sort((a,b)=>b-a);
+    if(byDay.week) dayKeys.push('week');
+
+    out += `<details class="hist-week"><summary>Week ${week} <span class="cnt">${esc(weekSummaryText(entries))}</span></summary>
+      ${dayKeys.map(k=>`<div class="hist-day-group" data-day="${k}">
+        <div class="hist-day">${esc(k==='week' ? 'Whole week' : dayAbbrFor(k))}</div>
+        ${byDay[k].map(e=>{
+          const hid = e.exKey ? `exhist-${e.exKey}-${e.exRow}-${week}` : null;
+          return `<div class="hist-entry"><div class="hd">${esc(e.title)}</div><div class="meta">${esc(e.meta.trim()||'—')}</div>${
+            hid ? `<button class="linkbtn" onclick="toggleExerciseHistory('${esc(e.exKey)}','${esc(e.exRow)}','${hid}')">History</button>
+            <div class="exhist" id="${hid}" hidden></div>` : ''}</div>`;
+        }).join('')}
+      </div>`).join('')}
     </details>`;
   }
   el.innerHTML = out || `<div class="note">No entries logged yet for this filter.</div>`;
