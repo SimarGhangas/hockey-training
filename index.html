@@ -306,7 +306,7 @@ const FONT_MICRO   = '10px Barlow';    // --fs-micro: gridline values, "no data"
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-09-19 13:34';
+const APP_BUILD = '2026-09-19 13:47';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -2728,16 +2728,63 @@ function daysSinceLastExport(){
 // isn't just Safari's storage-eviction policy (home-screen apps are largely exempt from that as long as
 // you open them regularly) but the much more mundane one: a lost, broken, or reset phone. Either way,
 // a backup you haven't taken can't save you.
-function backupReminderBanner(){
+// The banner used to assert flatly that "everything you log lives only on this device". Once cloud
+// sync existed that became FALSE while still being shown, and a banner that cries wolf trains you to
+// ignore banners — which matters here because the same .skip-banner component also carries the deload
+// notice and the protein target. So it now reports the state the data is actually in.
+//
+// The genuinely dangerous state is not "hasn't exported lately" — it is "believes it is synced when it
+// is not". That case is therefore the loudest, and it is detected by comparing when the data last
+// CHANGED against when a sync last SUCCEEDED, rather than by a bare time threshold: a quiet week with
+// no training has nothing at risk, whereas edits sitting unsynced for ten minutes do.
+function backupBannerState(){
   const days = daysSinceLastExport();
-  if(days < 5) return '';
-  const msg = days===Infinity
-    ? "You haven't backed up yet. Everything you log lives only on this device."
-    : `It's been ${days} days since your last backup. Everything you log lives only on this device.`;
-  return `<div class="skip-banner" style="cursor:pointer" onclick="exportData()">
-    <span>${msg}</span>
-    <span style="text-decoration:underline;flex-shrink:0;margin-left:8px;white-space:nowrap">Back up now</span>
-  </div>`;
+
+  if(cloudConfigured()){
+    if(getSession()){
+      if(cloudState.status === 'error'){
+        return { level:'urgent',
+                 msg:'Cloud sync is FAILING: ' + cloudState.message + '. Recent changes are only on this device.',
+                 label:'Retry', action:'cloudSyncNow(false)' };
+      }
+      const changed = stampOf(DATA), synced = lastSyncedAt();
+      if(changed && changed > synced + 600000){   // 10 min covers the 4s debounce and a slow network
+        return { level:'urgent',
+                 msg:'Changes made here haven’t reached the cloud yet.',
+                 label:'Sync now', action:'cloudSyncNow(false)' };
+      }
+      // Genuinely synced. The manual export is still worth keeping occasionally — cloud sync does not
+      // protect against deleting something and having the deletion sync too — but nagging every 5 days
+      // for a second copy of data that is already off-device is noise, so this relaxes to 30.
+      if(days >= 30){
+        return { level:'info',
+                 msg:'Your data is synced to the cloud. A local backup file is still worth keeping now and then.',
+                 label:'Export', action:'exportData()' };
+      }
+      return null;
+    }
+    return { level:'urgent',
+             msg:'Cloud sync is set up but you’re signed out — this device’s data isn’t being backed up.',
+             label:'Sign in', action:"selectTab('reference')" };
+  }
+
+  // No cloud sync configured: the original behaviour, and the original claim is still true.
+  if(days < 5) return null;
+  return { level:'urgent',
+           msg: days === Infinity
+             ? 'You haven’t backed up yet. Everything you log lives only on this device.'
+             : 'It’s been ' + days + ' days since your last backup. Everything you log lives only on this device.',
+           label:'Back up now', action:'exportData()' };
+}
+
+function backupReminderBanner(){
+  const st = backupBannerState();
+  if(!st) return '';
+  const dim = st.level === 'info' ? ';opacity:.85' : '';
+  return '<div class="skip-banner" style="cursor:pointer' + dim + '" onclick="' + esc(st.action) + '">' +
+    '<span>' + esc(st.msg) + '</span>' +
+    '<span style="text-decoration:underline;flex-shrink:0;margin-left:8px;white-space:nowrap">' +
+    esc(st.label) + '</span></div>';
 }
 function importData(evt){
   const file = evt.target.files[0]; if(!file) return;
