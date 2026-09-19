@@ -219,6 +219,12 @@ nav.bottomnav button.active::after{content:'';position:absolute;top:6px;left:50%
 .hist-entry:last-child{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
 .hist-entry .hd{display:flex;justify-content:space-between;font-weight:700;margin-bottom:3px;}
 .hist-entry .meta{color:var(--text-dim);}
+.pickerbar{display:flex;flex-wrap:wrap;justify-content:flex-end;margin:-4px 0 10px;}
+.pickerbar select{margin-top:8px;width:100%;}
+.pickerbar select,.card>select{font-size:var(--fs-ui);font-family:inherit;width:100%;
+  border:1px solid var(--text-faint);border-radius:0;background:var(--surface);color:var(--text);padding:10px 11px;}
+.linkbtn{background:none;border:none;color:var(--link);font-family:inherit;
+  font-size:var(--fs-caption);text-decoration:underline;padding:4px 0;cursor:pointer;}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
 .toolbar button{background:var(--accent);color:#fff;border:none;padding:11px 16px;border-radius:var(--radius-sm);font-size:var(--fs-body);font-weight:700;font-family:inherit;}
 .toolbar button.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
@@ -267,14 +273,16 @@ table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:va
   <div class="panel active" id="panel-today"></div>
   <div class="panel" id="panel-history"></div>
   <div class="panel" id="panel-dashboard"></div>
-  <div class="panel" id="panel-reference"></div>
+  <div class="panel" id="panel-plan"></div>
+  <div class="panel" id="panel-settings"></div>
 </main>
 
 <nav class="bottomnav">
   <button data-tab="today" class="active"><span class="ic">&#9679;</span>Today</button>
   <button data-tab="history"><span class="ic">&#9776;</span>History</button>
   <button data-tab="dashboard"><span class="ic">&#9650;</span>Dashboard</button>
-  <button data-tab="reference"><span class="ic">&#9636;</span>Reference</button>
+  <button data-tab="plan"><span class="ic">&#9636;</span>Plan</button>
+  <button data-tab="settings"><span class="ic">&#9635;</span>Settings</button>
 </nav>
 
 <script>
@@ -306,7 +314,7 @@ const FONT_MICRO   = '10px Barlow';    // --fs-micro: gridline values, "no data"
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-09-19 13:47';
+const APP_BUILD = '2026-09-19 14:50';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -758,7 +766,7 @@ function cloudSignOut(){
   clearSession();
   try{ localStorage.removeItem(LASTSYNC_KEY); }catch(e){}
   cloudState = { status:'signed-out', message:'', busy:false };
-  renderReference();
+  renderSettings();
 }
 
 // One retry on 401, after refreshing. Anything still failing is surfaced, never swallowed — a sync
@@ -834,7 +842,7 @@ function scheduleCloudPush(){
 async function cloudSyncNow(quiet){
   if(!cloudConfigured() || !getSession() || cloudState.busy) return;
   cloudState.busy = true;
-  if(!quiet){ cloudState.status = 'syncing'; renderReference(); }
+  if(!quiet){ cloudState.status = 'syncing'; renderSettings(); }
   try{
     const remote = await cloudPull();
     const localStamp = stampOf(DATA), remoteStamp = stampOf(remote);
@@ -847,7 +855,7 @@ async function cloudSyncNow(quiet){
       localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
       markSynced();
       cloudState = { status:'ok', message:'Pulled newer data from another device', busy:false };
-      renderToday(); renderReference();
+      renderToday(); renderPlan(); renderSettings();
       return;
     }
     // `!remote` is load-bearing, not belt-and-braces. On the very first sign-in the cloud row does not
@@ -861,7 +869,7 @@ async function cloudSyncNow(quiet){
     cloudState = { status:'error', message:(e && e.message) ? e.message : String(e), busy:false };
   }
   cloudState.busy = false;
-  renderReference();
+  renderSettings();
 }
 
 function cloudStatusLine(){
@@ -884,7 +892,7 @@ async function doCloudSignIn(){
   const pw    = document.getElementById('cloud-pw').value;
   if(!email || !pw){ alert('Enter your email and password.'); return; }
   cloudState = { status:'syncing', message:'', busy:false };
-  renderReference();
+  renderSettings();
   try{
     await cloudSignIn(email, pw);
     cloudState = { status:'ok', message:'Signed in', busy:false };
@@ -892,7 +900,7 @@ async function doCloudSignIn(){
   }catch(e){
     cloudState = { status:'error', message:(e && e.message) ? e.message : String(e), busy:false };
   }
-  renderReference();
+  renderSettings();
 }
 
 // Sync when the app is reopened or brought back to the foreground — the realistic moment another
@@ -910,7 +918,9 @@ function selectTab(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+id).classList.add('active');
   if(id==='dashboard') renderDashboard();
-  if(id==='history') renderHistory();
+  if(id==='history')   renderHistory();
+  if(id==='plan')      renderPlan();
+  if(id==='settings')  renderSettings();
 }
 
 /* ================= TODAY VIEW ================= */
@@ -1106,6 +1116,16 @@ function wireCard(container){
 // logging anything. Simar can still collapse it manually — that gets tracked and respected like any card.
 let openCards = new Set(['card-session']);
 function onCardToggle(id, isOpen){ if(isOpen) openCards.add(id); else openCards.delete(id); }
+// The weekly check-in is a once-a-week input, so it has no business occupying a card on a week it is
+// already done. "Due" derives entirely from data that already exists — no new field, no new schedule
+// concept. Note it is combined with the EXISTING dayIndex===0 gate rather than replacing it: on its
+// own this predicate would show the card on every day of the week until logged, i.e. MORE often than
+// today, which is the opposite of the point.
+function checkinDue(week){
+  const r = DATA.body[String(week)] || {};
+  const has = v => v !== undefined && v !== null && v !== '';
+  return !(has(r.weight) || has(r.rhr));
+}
 function cardOpenAttrs(id){ return `id="${id}" ${openCards.has(id)?'open':''} ontoggle="onCardToggle('${id}', this.open)"`; }
 
 /* ================= REST TIMER + TIMED-HOLD STOPWATCH =================
@@ -1322,6 +1342,12 @@ function renderToday(){
     html += `<div class="skip-banner">Deload week — same exercises as Week 12, but pull back deliberately: lighter weights, sub-max effort on cardio, more rest between sets. The numbers below are Week 12's targets carried over as a ceiling, not a fresh prescription — the actual load reduction is your call.</div>`;
   }
   const skipRec = DATA.skip[dayKey] || {};
+  // Hoisted to sit beside skipRec: the "logged as an extra today" banner further down reads
+  // extraRec, and it renders BEFORE the "+ Log something else" card that owns these fields.
+  // Leaving the declaration inside that card put the banner in the temporal dead zone and broke
+  // every render (caught by the harness across 15 assertions, 19 Sep 2026).
+  const extraRec = DATA.extra[dayKey] || {};
+  const extraIsCardio = EXTRA_CARDIO_TYPES.includes(extraRec.type);
   const todayType = effectiveTypeFor(week, dayIndex); // 'w1'|'w2'|'Steady'|'Sprint / COD'|'Interval'|'Football'|'Hockey Training'|'Hockey Match'|null — purely what was picked for this exact date, no default/plan behind it
   const hasSession = todayType !== null;
 
@@ -1340,81 +1366,34 @@ function renderToday(){
   </div>`;
 
   // Pick what today actually is — no plan/default behind this anymore, just a plain choice per day.
-  html += `<details class="card" ${cardOpenAttrs('card-picker')}><summary><span class="sumtxt">Today's session</span><span class="tag">${todayType?esc(SESSION_LABEL[todayType]||todayType):'Rest'}</span></summary><div class="card-body">
-    ${fieldHtml("Today's session", `<select onchange="setDayPick(${week},${dayIndex},this.value)">
-      <option value="" ${todayType===null?'selected':''}>Rest</option>
-      ${SCHEDULABLE_TYPES.map(t=>`<option value="${esc(t.id)}" ${todayType===t.id?'selected':''}>${esc(t.label)}</option>`).join('')}
-    </select>`)}
-  </div></details>`;
+  // The session picker used to be a standing card of its own, permanently occupying a slot for a
+  // control most days never touch. Two branches now:
+  //   - nothing picked  -> the choice LEADS the page. It is a prompt, not a hidden setting: on an
+  //                        unpicked morning the first thing Today should ask is what you are doing.
+  //   - something picked -> a single "Change" link above the session card, revealing the same <select>.
+  // The select is always in the DOM and merely hidden, so revealing it never triggers a renderToday()
+  // — a re-render here would collapse every other card and kill any running rest timer.
+  const pickerOptions = `<option value="" ${todayType===null?'selected':''}>Rest</option>` +
+    SCHEDULABLE_TYPES.map(t=>`<option value="${esc(t.id)}" ${todayType===t.id?'selected':''}>${esc(t.label)}</option>`).join('');
 
-  const injRec = DATA.injury[dayKey] || {};
+  if(!hasSession){
+    html += `<div class="card">
+      <h3>What are you doing today?</h3>
+      <select onchange="setDayPick(${week},${dayIndex},this.value)">${pickerOptions}</select>
+    </div>`;
+  } else {
+    html += `<div class="pickerbar">
+      <button class="linkbtn" onclick="const s=this.nextElementSibling; s.hidden=!s.hidden; if(!s.hidden) s.focus();">Change session</button>
+      <select hidden onchange="setDayPick(${week},${dayIndex},this.value)">${pickerOptions}</select>
+    </div>`;
+  }
+
 
   // Genuine-miss toggle — available every day, independent of what's picked above. Purely for marking
   // WHY today's pick didn't happen (Rest/Injured/Ill/Busy/Other), for the dashboard's adherence and
   // injury/illness stats. No longer where Football/Hockey Training/Hockey Match are logged — that's the
   // job of the "Today's session" picker (as the primary pick) or the "Log an extra activity" card below.
-  html += `<details class="card" ${cardOpenAttrs('card-skip')}><summary><span class="sumtxt">${hasSession ? "Skip today's session" : "Note a reason"}</span>${skipRec.skipped?`<span class="tag">${esc(skipRec.reason||'Rest')}</span>`:''}</summary><div class="card-body">
-    <div class="skip-toggle">
-      <div class="lbl">${hasSession ? "Skip today's session" : "Note a reason"}</div>
-      <div class="switch ${skipRec.skipped?'on':''}" id="skip-switch" onclick="toggleSkip('${dayKey}')"><div class="knob"></div></div>
-    </div>
-    ${skipRec.skipped ? fieldHtml('Reason', `<select data-k="skip" data-row="${dayKey}" data-f="reason" onchange="onSkipReasonChange('${dayKey}',this.value)">
-      ${SKIP_REASONS.map(r=>`<option ${skipRec.reason===r?'selected':''}>${r}</option>`).join('')}</select>`)
-      : `<div style="font-size:var(--fs-caption);color:var(--text-dim)">Injured, ill, or too busy today? Log the reason here — it won't count against your programmed-plan adherence.</div>`}
-  </div></details>`;
 
-  // Extra activity — always available, independent of both the picker above and the skip toggle. This
-  // is how a same-day extra gets logged, e.g. cardio in the morning AND hockey training in the evening:
-  // pick Cardio as today's session, then ALSO switch this on for the training. Stored in its own bucket
-  // (DATA.extra) so it never collides with the primary DATA.activity record for a day picked AS one of
-  // these three types.
-  const extraRec = DATA.extra[dayKey] || {};
-  // Two field layouts share this one card, switched on the selected type: the team-activity layout
-  // (calories/distance/HR/duration, +opponent/result for Hockey Match) is unchanged from before; the
-  // cardio layout (HR/distance/time/RPE) is new and deliberately mirrors the primary Cardio — Steady
-  // form field-for-field, since Simar asked for "the same boxes as Cardio - Steady" for Walk specifically
-  // and it made sense to give Steady/Sprint-COD/Interval the identical treatment when logged as extras.
-  const extraIsCardio = EXTRA_CARDIO_TYPES.includes(extraRec.type);
-  html += `<details class="card" ${cardOpenAttrs('card-extra')}><summary><span class="sumtxt">Log an extra activity</span>${extraRec.active?`<span class="tag">${esc(extraRec.type||'on')}</span>`:''}</summary><div class="card-body">
-    <div class="skip-toggle">
-      <div class="lbl">Log an extra activity</div>
-      <div class="switch ${extraRec.active?'on':''}" onclick="toggleExtra('${dayKey}')"><div class="knob"></div></div>
-    </div>
-    ${extraRec.active ? `
-      ${fieldHtml('Type', `<select data-k="extra" data-row="${dayKey}" data-f="type" onchange="onExtraTypeChange('${dayKey}',this.value)">
-        <optgroup label="Team activity">${ACTIVITY_REASONS.map(r=>`<option ${extraRec.type===r?'selected':''}>${r}</option>`).join('')}</optgroup>
-        <optgroup label="Cardio">${EXTRA_CARDIO_TYPES.map(r=>`<option ${extraRec.type===r?'selected':''}>${r}</option>`).join('')}</optgroup>
-      </select>`)}
-      ${extraIsCardio ? `
-        <div class="row3">
-          ${fieldHtml('Avg HR (bpm)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="hr" value="${esc(extraRec.hr??'')}">`)}
-          ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${esc(extraRec.distance??'')}">`)}
-          ${fieldHtml('Time (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${esc(extraRec.duration??'')}">`)}
-        </div>
-        ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${esc(extraRec.calories??'')}">`)}
-        ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="extra" data-row="${dayKey}" data-f="rpe" value="${esc(extraRec.rpe??'')}">`)}
-        <div style="font-size:var(--fs-caption);color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
-      ` : `
-        <div class="row2">
-          ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${esc(extraRec.calories??'')}">`)}
-          ${fieldHtml('Distance run (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${esc(extraRec.distance??'')}">`)}
-        </div>
-        <div class="row2">
-          ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="hr" value="${esc(extraRec.hr??'')}">`)}
-          ${fieldHtml('Duration (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${esc(extraRec.duration??'')}">`)}
-        </div>
-        ${extraRec.type==='Hockey Match' ? `
-          <div class="row2">
-            ${fieldHtml('Opponent', `<input data-k="extra" data-row="${dayKey}" data-f="opponent" value="${esc(extraRec.opponent||'')}">`)}
-            ${fieldHtml('Result', `<select data-k="extra" data-row="${dayKey}" data-f="result">
-              <option value=""></option><option ${extraRec.result==='Win'?'selected':''}>Win</option>
-              <option ${extraRec.result==='Loss'?'selected':''}>Loss</option><option ${extraRec.result==='Draw'?'selected':''}>Draw</option></select>`)}
-          </div>` : ''}
-      `}
-      ${fieldHtml('Completed?', ynPills('extra', dayKey, 'done', extraRec.done))}
-      ${fieldHtml('Notes', `<input data-k="extra" data-row="${dayKey}" data-f="notes" value="${esc(extraRec.notes||'')}">`)}
-    ` : `<div style="font-size:var(--fs-caption);color:var(--text-dim)">Did extra cardio, a walk, football, hockey training, or play a match on top of what's picked above? Log it here.</div>`}
-  </div></details>`;
   if(extraRec.active && extraRec.type){
     html += `<div class="skip-banner" style="background:var(--success-dim);border-color:var(--success);color:var(--success)"><span>${esc(extraRec.type)} logged as an extra today</span></div>`;
   }
@@ -1559,6 +1538,74 @@ function renderToday(){
     html += `<details class="card" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">Rest day</span></summary><div class="card-body"><div class="rest-note">Be active — mobility and stretching. No session picked for today.</div></div></details>`;
   }
 
+  // Extra activity — always available, independent of both the picker above and the skip toggle. This
+  // is how a same-day extra gets logged, e.g. cardio in the morning AND hockey training in the evening:
+  // pick Cardio as today's session, then ALSO switch this on for the training. Stored in its own bucket
+  // (DATA.extra) so it never collides with the primary DATA.activity record for a day picked AS one of
+  // these three types.
+  // Two field layouts share this one card, switched on the selected type: the team-activity layout
+  // (calories/distance/HR/duration, +opponent/result for Hockey Match) is unchanged from before; the
+  // cardio layout (HR/distance/time/RPE) is new and deliberately mirrors the primary Cardio — Steady
+  // form field-for-field, since Simar asked for "the same boxes as Cardio - Steady" for Walk specifically
+  // and it made sense to give Steady/Sprint-COD/Interval the identical treatment when logged as extras.
+  // Skip and extra-activity used to be two standing cards on Today. Both are occasional, so they now
+  // share ONE collapsed control rather than each costing a permanent slot. The bodies below are
+  // unchanged and still write to their own separate buckets (DATA.skip / DATA.extra) — this is a
+  // presentation change only. The summary tag shows whichever is currently active, so a collapsed
+  // card still tells you something is logged inside it.
+  html += `<details class="card" ${cardOpenAttrs('card-logmore')}><summary><span class="sumtxt">+ Log something else</span>${
+    skipRec.skipped ? `<span class="tag">${esc(skipRec.reason||'Rest')}</span>`
+    : extraRec.active ? `<span class="tag">${esc(extraRec.type||'on')}</span>` : ''
+  }</summary><div class="card-body">
+    <div class="skip-toggle">
+      <div class="lbl">${hasSession ? "Skip today's session" : "Note a reason"}</div>
+      <div class="switch ${skipRec.skipped?'on':''}" id="skip-switch" onclick="toggleSkip('${dayKey}')"><div class="knob"></div></div>
+    </div>
+    ${skipRec.skipped ? fieldHtml('Reason', `<select data-k="skip" data-row="${dayKey}" data-f="reason" onchange="onSkipReasonChange('${dayKey}',this.value)">
+      ${SKIP_REASONS.map(r=>`<option ${skipRec.reason===r?'selected':''}>${r}</option>`).join('')}</select>`)
+      : `<div style="font-size:var(--fs-caption);color:var(--text-dim)">Injured, ill, or too busy today? Log the reason here — it won't count against your programmed-plan adherence.</div>`}
+    <div style="border-top:1px solid var(--border);margin:16px 0"></div>
+    
+    <div class="skip-toggle">
+      <div class="lbl">Log an extra activity</div>
+      <div class="switch ${extraRec.active?'on':''}" onclick="toggleExtra('${dayKey}')"><div class="knob"></div></div>
+    </div>
+    ${extraRec.active ? `
+      ${fieldHtml('Type', `<select data-k="extra" data-row="${dayKey}" data-f="type" onchange="onExtraTypeChange('${dayKey}',this.value)">
+        <optgroup label="Team activity">${ACTIVITY_REASONS.map(r=>`<option ${extraRec.type===r?'selected':''}>${r}</option>`).join('')}</optgroup>
+        <optgroup label="Cardio">${EXTRA_CARDIO_TYPES.map(r=>`<option ${extraRec.type===r?'selected':''}>${r}</option>`).join('')}</optgroup>
+      </select>`)}
+      ${extraIsCardio ? `
+        <div class="row3">
+          ${fieldHtml('Avg HR (bpm)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="hr" value="${esc(extraRec.hr??'')}">`)}
+          ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${esc(extraRec.distance??'')}">`)}
+          ${fieldHtml('Time (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${esc(extraRec.duration??'')}">`)}
+        </div>
+        ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${esc(extraRec.calories??'')}">`)}
+        ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="extra" data-row="${dayKey}" data-f="rpe" value="${esc(extraRec.rpe??'')}">`)}
+        <div style="font-size:var(--fs-caption);color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
+      ` : `
+        <div class="row2">
+          ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${esc(extraRec.calories??'')}">`)}
+          ${fieldHtml('Distance run (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${esc(extraRec.distance??'')}">`)}
+        </div>
+        <div class="row2">
+          ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="hr" value="${esc(extraRec.hr??'')}">`)}
+          ${fieldHtml('Duration (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${esc(extraRec.duration??'')}">`)}
+        </div>
+        ${extraRec.type==='Hockey Match' ? `
+          <div class="row2">
+            ${fieldHtml('Opponent', `<input data-k="extra" data-row="${dayKey}" data-f="opponent" value="${esc(extraRec.opponent||'')}">`)}
+            ${fieldHtml('Result', `<select data-k="extra" data-row="${dayKey}" data-f="result">
+              <option value=""></option><option ${extraRec.result==='Win'?'selected':''}>Win</option>
+              <option ${extraRec.result==='Loss'?'selected':''}>Loss</option><option ${extraRec.result==='Draw'?'selected':''}>Draw</option></select>`)}
+          </div>` : ''}
+      `}
+      ${fieldHtml('Completed?', ynPills('extra', dayKey, 'done', extraRec.done))}
+      ${fieldHtml('Notes', `<input data-k="extra" data-row="${dayKey}" data-f="notes" value="${esc(extraRec.notes||'')}">`)}
+    ` : `<div style="font-size:var(--fs-caption);color:var(--text-dim)">Did extra cardio, a walk, football, hockey training, or play a match on top of what's picked above? Log it here.</div>`}
+  </div></details>`;
+
   // Mobility (always)
   const mobRec = DATA.mobility[dayKey] || {};
   html += `<details class="card" ${cardOpenAttrs('card-mobility')}><summary><span class="sumtxt">Mobility</span><span class="tag">daily</span></summary><div class="card-body">
@@ -1618,7 +1665,7 @@ function renderToday(){
   </div></details>`;
 
   // Weekly bodyweight check-in (Monday only)
-  if(dayIndex===0){
+  if(dayIndex===0 && checkinDue(week)){
     const bodyRec = DATA.body[String(week)] || {};
     html += `<details class="card" ${cardOpenAttrs('card-checkin')}><summary><span class="sumtxt">Weekly check-in</span><span class="tag">Week ${week}</span></summary><div class="card-body">
       <div class="row2">
@@ -1630,22 +1677,6 @@ function renderToday(){
   }
 
   // Injury quick log (collapsed by default)
-  html += `<details class="card" ${cardOpenAttrs('card-injury')}>
-    <summary><span class="sumtxt">Log a niggle or injury</span></summary>
-    <div class="card-body">
-      ${fieldHtml('Body part / type', `<select data-k="injury" data-row="${dayKey}" data-f="type">
-        <option value=""></option>${INJURY_TYPES.map(t=>`<option ${injRec.type===t?'selected':''}>${t}</option>`).join('')}</select>`)}
-      <div class="row2">
-        ${fieldHtml('Severity (1-5)', `<input type="number" min="1" max="5" data-k="injury" data-row="${dayKey}" data-f="severity" value="${esc(injRec.severity??'')}">`)}
-        ${fieldHtml('Status', `<select data-k="injury" data-row="${dayKey}" data-f="status">
-          <option value=""></option>${STATUS_TYPES.map(s=>`<option ${injRec.status===s?'selected':''}>${s}</option>`).join('')}</select>`)}
-      </div>
-      ${fieldHtml('How it happened', `<input data-k="injury" data-row="${dayKey}" data-f="cause" value="${esc(injRec.cause||'')}">`)}
-      ${fieldHtml('Action taken', `<input data-k="injury" data-row="${dayKey}" data-f="action" value="${esc(injRec.action||'')}">`)}
-      ${fieldHtml('Days missed', `<input type="number" data-k="injury" data-row="${dayKey}" data-f="daysMissed" value="${esc(injRec.daysMissed??'')}">`)}
-      ${fieldHtml('Notes', `<textarea data-k="injury" data-row="${dayKey}" data-f="notes">${esc(injRec.notes||'')}</textarea>`)}
-    </div>
-  </details>`;
 
   panel.innerHTML = html;
   wireCard(panel);
@@ -2556,7 +2587,7 @@ function restockItem(stockId){
   DATA.pillStock[stockId] = DATA.pillStock[stockId] || [];
   DATA.pillStock[stockId].push({date: ymd(startOfDay(new Date())), qty: PILL_BOTTLE_SIZE});
   save();
-  renderReference();
+  renderPlan();   // the stock card lives on Plan now, not Settings
 }
 function onPlateCalcInput(){
   const targetEl = document.getElementById('plate-target');
@@ -2604,22 +2635,35 @@ function cloudCardHtml(){
     '<div class="toolbar" style="margin-top:8px"><button onclick="cloudSignOut()">Sign out</button></div>';
 }
 
-function renderReference(){
-  const panel = document.getElementById('panel-reference');
-  panel.innerHTML = `<h2>Plan Reference</h2>
-  <div class="note">Add this page to your Home Screen (Safari share icon &rarr; "Add to Home Screen") so it opens full-screen like an app.</div>
-  <h3 style="font-size:var(--fs-ui);margin:0 0 8px">Cloud sync</h3>
-  <div class="card">${cloudCardHtml()}</div>
-
-  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">App updates</h3>
-  <div class="card">
-    <div style="font-size:var(--fs-body);color:var(--text-dim);margin-bottom:10px">This is a home-screen app with no browser bar to pull-to-refresh — after Simar pushes a code change, tap below to force-fetch the latest version. Safe any time: it only clears the app's cached files, never your logged data.</div>
-    <div class="toolbar"><button onclick="forceRefresh()">Refresh app (get latest version)</button></div>
-    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:8px">
-      Running build: <strong style="color:var(--text-dim)">${esc(APP_BUILD)}</strong><br>
-      If this doesn't match the version you just uploaded, the phone is still on the old copy \u2014 tap Refresh above.
-    </div>
-  </div>
+// Split out of the former renderReference() (19 Sep 2026). Plan holds what you consult while
+// training; Settings holds the plumbing. wireCard() at the end of each is load-bearing: without it
+// inputs render but silently never save — the exact bug that broke the Fitness Tests fields for
+// months before 17 Aug 2026.
+function renderPlan(){
+  const panel = document.getElementById('panel-plan');
+  // The injury log binds to the REAL current day, not the day Today is browsing — Plan is a
+  // reference surface with no day navigation of its own, and silently inheriting another tab's
+  // state would be worse than picking one honestly. Same precedent as restockItem(), which also
+  // uses the wall clock rather than the mocked browsing date.
+  const injInfo = weekInfoFor(startOfDay(new Date()));
+  const injKey = injInfo.inProgram ? `${injInfo.week}_${injInfo.dayIndex}` : null;
+  const injRec = injKey ? (DATA.injury[injKey] || {}) : {};
+  const injSection = !injKey
+    ? `<div class="note">Today is outside the program, so there's no day to log a niggle against.</div>`
+    : `<div class="card">
+      ${fieldHtml('Body part / type', `<select data-k="injury" data-row="${injKey}" data-f="type">
+        <option value=""></option>${INJURY_TYPES.map(t=>`<option ${injRec.type===t?'selected':''}>${t}</option>`).join('')}</select>`)}
+      <div class="row2">
+        ${fieldHtml('Severity (1-5)', `<input type="number" min="1" max="5" data-k="injury" data-row="${injKey}" data-f="severity" value="${esc(injRec.severity??'')}">`)}
+        ${fieldHtml('Status', `<select data-k="injury" data-row="${injKey}" data-f="status">
+          <option value=""></option>${STATUS_TYPES.map(s=>`<option ${injRec.status===s?'selected':''}>${s}</option>`).join('')}</select>`)}
+      </div>
+      ${fieldHtml('How it happened', `<input data-k="injury" data-row="${injKey}" data-f="cause" value="${esc(injRec.cause||'')}">`)}
+      ${fieldHtml('Action taken', `<input data-k="injury" data-row="${injKey}" data-f="action" value="${esc(injRec.action||'')}">`)}
+      ${fieldHtml('Days missed', `<input type="number" data-k="injury" data-row="${injKey}" data-f="daysMissed" value="${esc(injRec.daysMissed??'')}">`)}
+      ${fieldHtml('Notes', `<textarea data-k="injury" data-row="${injKey}" data-f="notes">${esc(injRec.notes||'')}</textarea>`)}
+    </div>`;
+  panel.innerHTML = `<h2>Plan</h2>
   <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Daily mobility routine</h3>
   <div class="card"><ol class="mob-ol">${MOBILITY_ROUTINE.map(([ex,reps,link])=>`<li><b>${esc(ex)}</b> — ${esc(reps)} &middot; <a class="demo" href="${link}" target="_blank" rel="noopener">Watch</a></li>`).join('')}</ol></div>
   <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Plate calculator</h3>
@@ -2644,17 +2688,40 @@ function renderReference(){
       </div>`;
     }).join('')}
   </div>
+  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Log a niggle or injury</h3>
+  <p style="font-size:var(--fs-caption);color:var(--text-faint);margin:0 0 8px">Logged against today, ${esc(fmtDate(startOfDay(new Date())))}.</p>
+  ${injSection}`;
+  wireCard(panel);
+}
+
+function renderSettings(){
+  const panel = document.getElementById('panel-settings');
+  panel.innerHTML = `<h2>Settings</h2>
+  <div class="note">Add this page to your Home Screen (Safari share icon &rarr; "Add to Home Screen") so it opens full-screen like an app.</div>
+  <h3 style="font-size:var(--fs-ui);margin:0 0 8px">Cloud sync</h3>
+  <div class="card">${cloudCardHtml()}</div>
+
+  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">App updates</h3>
+  <div class="card">
+    <div style="font-size:var(--fs-body);color:var(--text-dim);margin-bottom:10px">This is a home-screen app with no browser bar to pull-to-refresh — after Simar pushes a code change, tap below to force-fetch the latest version. Safe any time: it only clears the app's cached files, never your logged data.</div>
+    <div class="toolbar"><button onclick="forceRefresh()">Refresh app (get latest version)</button></div>
+    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:8px">
+      Running build: <strong style="color:var(--text-dim)">${esc(APP_BUILD)}</strong><br>
+      If this doesn't match the version you just uploaded, the phone is still on the old copy \u2014 tap Refresh above.
+    </div>
+  </div>
   <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Data</h3>
   <div class="toolbar">
     <button onclick="exportData()">Export backup</button>
     <button class="secondary" onclick="document.getElementById('import-file').click()">Import backup</button>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
   </div>
-  <p style="font-size:var(--fs-caption);color:var(--text-dim)">This device is your single source of truth — everything you log lives only in
-  this browser's storage, nowhere else. "Export backup" opens your device's share sheet: choose "Save to Files" and pick iCloud
+  <p style="font-size:var(--fs-caption);color:var(--text-dim)">A backup file is a second copy, independent of cloud sync — worth keeping, because syncing
+  faithfully copies a deletion too. "Export backup" opens your device's share sheet: choose "Save to Files" and pick iCloud
   Drive (not just "On My iPhone") so the backup survives a lost or reset phone, not just a full one. You'll get a reminder banner
   on the Today tab if it's been a while since your last backup.</p>
   <div class="toolbar"><button class="danger" onclick="if(confirm('Clear all logged data on this device?')) clearAll()">Clear all data</button></div>`;
+  wireCard(panel);
 }
 // Clears the service worker's cache AND unregisters it, then reloads. Unregistering (not just clearing
 // caches) matters: on next load the browser re-fetches sw.js itself from the network and re-runs
@@ -2765,7 +2832,7 @@ function backupBannerState(){
     }
     return { level:'urgent',
              msg:'Cloud sync is set up but you’re signed out — this device’s data isn’t being backed up.',
-             label:'Sign in', action:"selectTab('reference')" };
+             label:'Sign in', action:"selectTab('settings')" };
   }
 
   // No cloud sync configured: the original behaviour, and the original claim is still true.
@@ -2821,11 +2888,11 @@ function importData(evt){
   reader.readAsText(file);
   evt.target.value = '';
 }
-function clearAll(){ DATA={w1:{},w2:{},cardio:{},mobility:{},body:{},injury:{},skip:{},activity:{},extra:{},dayPick:{},settings:{},session:{},tests:{},readiness:{},supplements:{},pillStock:{},schemaVersion:SCHEMA_VERSION}; save(); renderToday(); renderReference(); }
+function clearAll(){ DATA={w1:{},w2:{},cardio:{},mobility:{},body:{},injury:{},skip:{},activity:{},extra:{},dayPick:{},settings:{},session:{},tests:{},readiness:{},supplements:{},pillStock:{},schemaVersion:SCHEMA_VERSION}; save(); renderToday(); renderPlan(); renderSettings(); }
 
 /* ================= INIT ================= */
 renderToday();
-renderReference();
+// Plan and Settings render lazily in selectTab(), so nothing renders them at boot.
 // Initial sync, fired after the app has already rendered from localStorage. Deliberately NOT awaited
 // anywhere in the boot path: the app must open and be usable with no network, exactly as before, and
 // the cloud is allowed to catch up a moment later or not at all.
