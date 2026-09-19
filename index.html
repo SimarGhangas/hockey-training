@@ -306,7 +306,7 @@ const FONT_MICRO   = '10px Barlow';    // --fs-micro: gridline values, "no data"
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-09-19 13:25';
+const APP_BUILD = '2026-09-19 13:34';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -325,6 +325,10 @@ const CLOUD_TABLE = 'tracker_data';
 // DATA it would be serialised into every backup export and shared out through the iOS share sheet —
 // the same class of mistake as putting a credential anywhere it can be copied by accident.
 const SESSION_KEY = 'hockey_tracker_session';
+// When a sync last actually SUCCEEDED. Deliberately its own key and NOT inside DATA: DATA is the
+// thing being synced, so writing a timestamp there on every successful push would dirty the record
+// and trigger another push, forever. It is also not training data and has no business in a backup.
+const LASTSYNC_KEY = 'hockey_tracker_lastsync';
 const WEEKDAY_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]; // JS Date.getDay() order
 function dayAbbrFor(dayIndex){ return WEEKDAY_ABBR[(START_DATE.getDay() + dayIndex) % 7]; }
 const DAY_INDEXES = [0,1,2,3,4,5,6]; // iterate program day offsets; label them with dayAbbrFor()
@@ -752,6 +756,7 @@ async function cloudSignIn(email, password){
 }
 function cloudSignOut(){
   clearSession();
+  try{ localStorage.removeItem(LASTSYNC_KEY); }catch(e){}
   cloudState = { status:'signed-out', message:'', busy:false };
   renderReference();
 }
@@ -798,6 +803,23 @@ async function cloudPush(){
   });
 }
 
+function lastSyncedAt(){
+  const v = localStorage.getItem(LASTSYNC_KEY);
+  return v ? parseInt(v, 10) : 0;
+}
+function markSynced(){
+  try{ localStorage.setItem(LASTSYNC_KEY, String(Date.now())); }catch(e){}
+}
+function agoText(ms){
+  const mins = Math.floor((Date.now() - ms) / 60000);
+  if(mins < 1)   return 'just now';
+  if(mins < 60)  return mins + ' min ago';
+  const hrs = Math.floor(mins / 60);
+  if(hrs < 24)   return hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
+  const days = Math.floor(hrs / 24);
+  return days + (days === 1 ? ' day ago' : ' days ago');
+}
+
 function stampOf(d){
   return (d && d.settings && d.settings.updatedAt) ? Date.parse(d.settings.updatedAt) || 0 : 0;
 }
@@ -823,6 +845,7 @@ async function cloudSyncNow(quiet){
       DATA = applyDefaults(remote);
       migrateData();
       localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+      markSynced();
       cloudState = { status:'ok', message:'Pulled newer data from another device', busy:false };
       renderToday(); renderReference();
       return;
@@ -832,6 +855,7 @@ async function cloudSyncNow(quiet){
     // stamps read 0, `localStamp > remoteStamp` is false, and the existing training log would sit
     // unsynced until the next edit happened to stamp it. If the cloud has nothing, always push.
     if(!remote || localStamp > remoteStamp) await cloudPush();
+    markSynced();   // reached only if the pull (and any push) completed without throwing
     cloudState = { status:'ok', message:'', busy:false };
   }catch(e){
     cloudState = { status:'error', message:(e && e.message) ? e.message : String(e), busy:false };
@@ -845,8 +869,14 @@ function cloudStatusLine(){
   if(!getSession())      return 'Signed out — your data is only on this device.';
   if(cloudState.status === 'syncing') return 'Syncing…';
   if(cloudState.status === 'error')   return 'Last sync FAILED: ' + cloudState.message;
-  const st = DATA.settings.updatedAt ? new Date(DATA.settings.updatedAt).toLocaleString() : 'never';
-  return 'Synced. Last change: ' + st + (cloudState.message ? ' — ' + cloudState.message : '');
+  // Report EVIDENCE that data moved, not merely the absence of an error. The earlier version said
+  // "Synced" whenever a session existed and nothing had thrown yet, which would have read as success
+  // even if a push had never once happened — precisely the silent-failure mode this whole feature is
+  // meant to protect against.
+  const ls = lastSyncedAt();
+  if(!ls) return 'Signed in, but NOT yet synced — tap Sync now.';
+  return 'Synced ' + agoText(ls) + ' (' + new Date(ls).toLocaleString() + ')' +
+         (cloudState.message ? ' — ' + cloudState.message : '');
 }
 
 async function doCloudSignIn(){
