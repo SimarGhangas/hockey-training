@@ -32,6 +32,25 @@
    * the brand's own rule is Dot Red is ONE point per screen, never body text/headers/links/buttons — the
    * literal Dot Red hex is kept separately below as --sg-dot, used ONLY for the active bottom-nav marker.
    */
+  /* Type scale. Six steps, defined once. This replaced 15 ad-hoc sizes (82 declarations) that had
+   * accreted over many small feature rounds — 9/10/10.5/11/11.5/12/12.5/13/13.5/14/14.5/15/16/18/22,
+   * with pairs sitting 0.5px apart that no reader could tell apart and no rule explained. Adapted from
+   * the brand's Screen scale in references/brand-rules.md (Display 56 / H1 40 / H2 30 / H3 22 / Body 17
+   * / Small 14 / Label 12), which is written for a desktop dashboard: this app is a dense 375px-wide
+   * logging screen whose largest type is 22px, so the ladder is shifted down while keeping the brand's
+   * intent — few steps, clear roles, Barlow throughout. Add a step only with a reason; never a one-off
+   * px value, which is how the sprawl started. tests.html suite 9 enforces this.
+   *
+   * --fs-ui is 16px and NOT smaller for a specific reason: iOS Safari auto-zooms the page when a text
+   * input under 16px gets focus, and it has ignored maximum-scale/user-scalable since iOS 10, so the
+   * viewport meta does not prevent it. Form inputs must stay on this step or the page will jump on
+   * every tap mid-workout. */
+  --fs-micro:10px;      /* tag badges, bottom-nav labels, stat-card labels, heatmap week column */
+  --fs-caption:11.5px;  /* field labels, demo links, table headers, meta lines, hints, targets */
+  --fs-body:13px;       /* default UI text — the workhorse step */
+  --fs-ui:16px;         /* form inputs (see above), card headers, section h3s, emphasised values */
+  --fs-head:18px;       /* h1, h2, bottom-nav icons */
+  --fs-display:22px;    /* dashboard stat-card values */
   --bg:#FFFFFF; --surface:#FFFFFF; --surface2:#EBEEF3; --border:#D5DBE5;
   --text:#15233F; --text-dim:#4A5870; --text-faint:#8995A9;
   --accent:#15233F; --accent-dim:#E8EFFB; --accent-text:#15233F;
@@ -49,38 +68,38 @@ header{background:var(--bg);padding:calc(14px + env(safe-area-inset-top)) 18px 1
   border-bottom:1px solid var(--border);}
 header .brand{display:flex;align-items:center;gap:10px;}
 header .logo{width:32px;height:32px;border-radius:0;background:var(--accent);
-  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;}
-header h1{margin:0;font-size:16px;font-weight:800;letter-spacing:-0.01em;}
-header .sub{font-size:11.5px;color:var(--text-faint);margin-top:1px;}
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:var(--fs-ui);color:#fff;flex-shrink:0;}
+header h1{margin:0;font-size:var(--fs-head);font-weight:800;letter-spacing:-0.01em;}
+header .sub{font-size:var(--fs-caption);color:var(--text-faint);margin-top:1px;}
 main{padding:16px 16px 30px;max-width:600px;margin:0 auto;}
 .panel{display:none;}
 .panel.active{display:block;}
 .daybar{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-radius:var(--radius);
   padding:10px 10px;margin-bottom:14px;border:1px solid var(--border);}
 .daybar button{background:var(--surface2);color:var(--text);border:1px solid var(--border);width:38px;height:38px;
-  border-radius:var(--radius-sm);font-size:16px;font-weight:600;font-family:inherit;}
+  border-radius:var(--radius-sm);font-size:var(--fs-ui);font-weight:600;font-family:inherit;}
 .daybar button:disabled{opacity:0.3;}
 .daybar .center{text-align:center;flex:1;}
-.daybar .center .d{font-size:15px;font-weight:700;}
-.daybar .center .w{font-size:11.5px;color:var(--accent-text);font-weight:600;margin-top:1px;}
+.daybar .center .d{font-size:var(--fs-ui);font-weight:700;}
+.daybar .center .w{font-size:var(--fs-caption);color:var(--accent-text);font-weight:600;margin-top:1px;}
 .jumprow{display:flex;gap:5px;justify-content:center;margin-top:6px;}
-.jumprow select{border:1px solid var(--border);border-radius:0;padding:4px 6px;font-size:11px;font-family:inherit;
+.jumprow select{border:1px solid var(--border);border-radius:0;padding:4px 6px;font-size:var(--fs-caption);font-family:inherit;
   background:var(--surface2);color:var(--text-dim);color-scheme:light;}
 .card{background:var(--surface);border-radius:var(--radius);padding:16px;margin-bottom:14px;border:1px solid var(--border);}
-.card h3{margin:0 0 12px;font-size:14.5px;font-weight:700;display:flex;align-items:center;justify-content:space-between;color:var(--accent-text);
+.card h3{margin:0 0 12px;font-size:var(--fs-ui);font-weight:700;display:flex;align-items:center;justify-content:space-between;color:var(--accent-text);
   text-transform:uppercase;letter-spacing:.02em;}
-.card h3 .tag{font-size:10px;background:var(--surface2);color:var(--text-dim);padding:4px 9px;border-radius:20px;font-weight:600;
+.card h3 .tag{font-size:var(--fs-micro);background:var(--surface2);color:var(--text-dim);padding:4px 9px;border-radius:20px;font-weight:600;
   text-transform:uppercase;letter-spacing:.03em;}
 /* Collapsible card pattern — every Today card except "This week" renders as <details class="card"> so it
    starts closed and the day's screen needs minimal scrolling to get an overview. The summary mirrors the
    old .card h3 styling (red, all-caps, tag pill on the right) so a collapsed card looks identical to the
    old always-open one, just closed by default. */
 details.card{padding:0;}
-details.card>summary{margin:0;padding:16px;font-size:14.5px;font-weight:700;display:flex;align-items:center;
+details.card>summary{margin:0;padding:16px;font-size:var(--fs-ui);font-weight:700;display:flex;align-items:center;
   justify-content:flex-start;color:var(--accent-text);text-transform:uppercase;letter-spacing:.02em;
   cursor:pointer;list-style:none;gap:8px;}
 details.card>summary::-webkit-details-marker{display:none;}
-details.card>summary::after{content:'\25B8';color:var(--text-dim);font-size:13px;flex-shrink:0;
+details.card>summary::after{content:'\25B8';color:var(--text-dim);font-size:var(--fs-body);flex-shrink:0;
   transition:transform .15s;text-transform:none;}
 details.card[open]>summary::after{transform:rotate(90deg);}
 /* Fixed-width tag column (not content-sized) so "DAILY"/"WEEK 1"/etc always start at the same x position
@@ -96,7 +115,7 @@ details.card[open]>summary::after{transform:rotate(90deg);}
    bold 14.5px uppercase text indistinguishable from the title, not as a status badge. Column position was
    correct; the visual treatment was not. Added the missing pill styling here and centered the text within
    the fixed column (reads as an intentional fixed-width badge rather than off-center leftover space). */
-details.card>summary .tag{font-size:10px;background:var(--surface2);color:var(--text-dim);font-weight:600;
+details.card>summary .tag{font-size:var(--fs-micro);background:var(--surface2);color:var(--text-dim);font-weight:600;
   padding:4px 6px;border-radius:20px;letter-spacing:.03em;box-sizing:border-box;
   text-transform:uppercase;flex:0 0 96px;width:96px;text-align:center;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -105,13 +124,13 @@ details.card>.card-body{padding:0 16px 16px;}
 details.card>summary:hover{background:var(--surface2);border-radius:var(--radius);}
 .exrow{border-top:1px solid var(--border);padding-top:12px;margin-top:12px;}
 .exrow:first-child{border-top:none;padding-top:0;margin-top:0;}
-.exrow .exname{font-size:13.5px;font-weight:700;}
-.exrow .extarget{font-size:11.5px;color:var(--text-dim);margin:2px 0 8px;}
-.exrow a.demo{font-size:11px;color:var(--link);text-decoration:none;font-weight:600;}
+.exrow .exname{font-size:var(--fs-body);font-weight:700;}
+.exrow .extarget{font-size:var(--fs-caption);color:var(--text-dim);margin:2px 0 8px;}
+.exrow a.demo{font-size:var(--fs-caption);color:var(--link);text-decoration:none;font-weight:600;}
 .field{margin-bottom:10px;}
-.field label{display:block;font-size:11px;color:var(--text-dim);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
+.field label{display:block;font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
 .field input,.field select,.field textarea{width:100%;border:1px solid var(--text-faint);border-radius:0;padding:10px 11px;
-  font-size:15px;font-family:inherit;background:var(--surface);color:var(--text);}
+  font-size:var(--fs-ui);font-family:inherit;background:var(--surface);color:var(--text);}
 .field select{color-scheme:light;}
 .field textarea{min-height:44px;resize:vertical;}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -120,13 +139,13 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
 /* Explicit 9999px, not var(--radius-sm) (now 0 under the brand's square-corners rule) — brand's one named
    exception is "pills and status dots are the only round shapes," and these Yes/No/state toggles are exactly
    that: status pills, not general UI chrome. */
-.pill{flex:1;text-align:center;padding:10px;border-radius:9999px;border:1px solid var(--border);font-size:13.5px;
+.pill{flex:1;text-align:center;padding:10px;border-radius:9999px;border:1px solid var(--border);font-size:var(--fs-body);
   font-weight:700;background:var(--surface2);color:var(--text-dim);}
 .pill.y.active{background:var(--success-dim);color:var(--success);border-color:var(--success);}
 .pill.n.active{background:var(--danger-dim);color:var(--danger);border-color:var(--danger);}
 .pill.sel.active{background:var(--accent-dim);color:var(--accent-text);border-color:var(--accent);}
 .timer-btn{width:100%;background:var(--surface2);color:var(--accent-text);border:1px solid var(--border);
-  border-radius:var(--radius-sm);padding:9px;font-size:13px;font-weight:700;font-family:inherit;margin:6px 0 10px;}
+  border-radius:var(--radius-sm);padding:9px;font-size:var(--fs-body);font-weight:700;font-family:inherit;margin:6px 0 10px;}
 .timer-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent-text);}
 .timer-row{display:flex;gap:6px;margin:6px 0 10px;}
 .timer-row .timer-btn{margin:0;flex:2;}
@@ -142,38 +161,38 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
 .excarousel-page{flex:0 0 100%;min-width:0;}
 .excarousel-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px;}
 .excarousel-btn{background:var(--surface2);color:var(--accent-text);border:1px solid var(--border);width:34px;height:34px;
-  border-radius:50%;font-size:16px;font-weight:700;font-family:inherit;flex-shrink:0;}
+  border-radius:50%;font-size:var(--fs-ui);font-weight:700;font-family:inherit;flex-shrink:0;}
 .excarousel-btn:disabled{opacity:0.25;}
 .excarousel-dots{display:flex;gap:6px;align-items:center;}
 .excarousel-dots .dot{width:7px;height:7px;border-radius:50%;background:var(--border);flex-shrink:0;}
 .excarousel-dots .dot.active{background:var(--accent);width:16px;border-radius:4px;}
 .setrow{border-top:1px dashed var(--border);padding-top:10px;margin-top:10px;}
 .setrow:first-child{border-top:none;padding-top:0;margin-top:0;}
-.setrow .setno{font-size:12px;font-weight:700;color:var(--text-dim);display:flex;justify-content:space-between;margin-bottom:6px;}
+.setrow .setno{font-size:var(--fs-body);font-weight:700;color:var(--text-dim);display:flex;justify-content:space-between;margin-bottom:6px;}
 .setrow .setno .settarget{font-weight:500;color:var(--text-faint);text-transform:none;}
 .supitem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--border);}
 .supitem:first-of-type{border-top:none;padding-top:2px;}
-.supitem-txt{font-size:12px;color:var(--text-dim);flex:1;}
+.supitem-txt{font-size:var(--fs-body);color:var(--text-dim);flex:1;}
 .supitem .pill-group{width:88px;flex-shrink:0;}
-.supitem .pill{padding:6px 4px;font-size:11.5px;}
+.supitem .pill{padding:6px 4px;font-size:var(--fs-caption);}
 .heatmap{display:flex;flex-direction:column;gap:3px;}
 .heatmap-row{display:flex;align-items:center;gap:3px;}
-.heatmap-wk{width:26px;font-size:9px;color:var(--text-faint);flex-shrink:0;}
+.heatmap-wk{width:26px;font-size:var(--fs-micro);color:var(--text-faint);flex-shrink:0;}
 .heatmap-cell{flex:1;aspect-ratio:1;border-radius:0;min-width:0;border:1px solid var(--border);}
-.rest-note{font-size:13.5px;color:var(--text-dim);text-align:center;padding:14px 0;}
+.rest-note{font-size:var(--fs-body);color:var(--text-dim);text-align:center;padding:14px 0;}
 .skip-banner{display:flex;align-items:center;justify-content:space-between;background:var(--warn-dim);border:1px solid var(--warn);
-  border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--warn);font-weight:600;}
+  border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:var(--fs-body);color:var(--warn);font-weight:600;}
 .skip-toggle{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-.skip-toggle .lbl{font-size:13.5px;font-weight:700;}
+.skip-toggle .lbl{font-size:var(--fs-body);font-weight:700;}
 .switch{position:relative;width:46px;height:26px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;flex-shrink:0;}
 .switch.on{background:var(--warn-dim);border-color:var(--warn);}
 .switch .knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--text-dim);transition:transform .15s;}
 .switch.on .knob{background:var(--warn);transform:translateX(20px);}
 nav.bottomnav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);
   display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:20;}
-nav.bottomnav button{flex:1;background:none;border:none;padding:10px 4px 8px;font-size:10.5px;color:var(--text-faint);
+nav.bottomnav button{flex:1;background:none;border:none;padding:10px 4px 8px;font-size:var(--fs-micro);color:var(--text-faint);
   font-family:inherit;font-weight:600;position:relative;}
-nav.bottomnav button .ic{display:block;font-size:18px;margin-bottom:3px;}
+nav.bottomnav button .ic{display:block;font-size:var(--fs-head);margin-bottom:3px;}
 nav.bottomnav button.active{color:var(--accent-text);}
 /* The brand's "one red point": an 8px Dot Red circle marks the active nav item. This is the ONLY Dot Red
    pixel anywhere in the app — everywhere else red was replaced with navy/Data Blue during the brand restyle. */
@@ -181,38 +200,38 @@ nav.bottomnav button.active::after{content:'';position:absolute;top:6px;left:50%
   width:8px;height:8px;border-radius:50%;background:var(--sg-dot);}
 .stat-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
 .stat-cards .card{margin-bottom:0;padding:13px;}
-.stat-cards .label{font-size:10.5px;color:var(--text-dim);text-transform:uppercase;font-weight:600;letter-spacing:.02em;}
-.stat-cards .value{font-size:22px;font-weight:800;margin-top:3px;}
-.bar-row{margin-bottom:12px;font-size:12.5px;}
+.stat-cards .label{font-size:var(--fs-micro);color:var(--text-dim);text-transform:uppercase;font-weight:600;letter-spacing:.02em;}
+.stat-cards .value{font-size:var(--fs-display);font-weight:800;margin-top:3px;}
+.bar-row{margin-bottom:12px;font-size:var(--fs-body);}
 .bar-row .lbl{margin-bottom:4px;font-weight:600;}
-.bar-track{background:var(--surface2);border-radius:8px;height:10px;overflow:hidden;}
+.bar-track{background:var(--surface2);border-radius:0;height:10px;overflow:hidden;}
 .bar-fill{background:var(--link);height:100%;border-radius:0;}
 .chip-row{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;}
 .chip{flex-shrink:0;padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);
-  font-size:12px;font-weight:600;color:var(--text-dim);}
+  font-size:var(--fs-body);font-weight:600;color:var(--text-dim);}
 .chip.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .hist-week{margin-bottom:6px;}
 .hist-week summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 13px;
-  font-size:13.5px;font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;}
+  font-size:var(--fs-body);font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;}
 .hist-week summary::-webkit-details-marker{display:none;}
-.hist-week summary .cnt{color:var(--text-dim);font-weight:600;font-size:11.5px;}
-.hist-entry{background:var(--surface);border:1px solid var(--border);border-top:none;padding:10px 13px;font-size:12.5px;}
+.hist-week summary .cnt{color:var(--text-dim);font-weight:600;font-size:var(--fs-caption);}
+.hist-entry{background:var(--surface);border:1px solid var(--border);border-top:none;padding:10px 13px;font-size:var(--fs-body);}
 .hist-entry:last-child{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
 .hist-entry .hd{display:flex;justify-content:space-between;font-weight:700;margin-bottom:3px;}
 .hist-entry .meta{color:var(--text-dim);}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
-.toolbar button{background:var(--accent);color:#fff;border:none;padding:11px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:700;font-family:inherit;}
+.toolbar button{background:var(--accent);color:#fff;border:none;padding:11px 16px;border-radius:var(--radius-sm);font-size:var(--fs-body);font-weight:700;font-family:inherit;}
 .toolbar button.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
 .toolbar button.danger{background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);}
 .note{background:var(--accent-dim);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:11px 13px;
-  font-size:12px;color:var(--accent-text);margin-bottom:14px;}
+  font-size:var(--fs-body);color:var(--accent-text);margin-bottom:14px;}
 a.demo{color:var(--link);}
-h2{font-size:18px;margin:0 0 12px;font-weight:800;color:var(--accent-text);}
-ol.mob-ol{margin:0;padding-left:18px;font-size:13px;line-height:1.9;}
-table.ref-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surface);border-radius:var(--radius-sm);
+h2{font-size:var(--fs-head);margin:0 0 12px;font-weight:800;color:var(--accent-text);}
+ol.mob-ol{margin:0;padding-left:18px;font-size:var(--fs-body);line-height:1.9;}
+table.ref-table{width:100%;border-collapse:collapse;font-size:var(--fs-body);background:var(--surface);border-radius:var(--radius-sm);
   overflow:hidden;border:1px solid var(--border);}
 table.ref-table th,table.ref-table td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;}
-table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:11px;text-transform:uppercase;font-weight:700;}
+table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:var(--fs-caption);text-transform:uppercase;font-weight:700;}
 </style>
 </head>
 <body>
@@ -262,11 +281,53 @@ table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:11
 /* ================= DATA MODEL — this is the single source of truth (no separate desktop app anymore).
  * Open this same file in a desktop browser to review; the "skip" map tracks rest/injury/illness/busy days
  * separately from normal completion so adherence stats don't get dragged down by legitimate rest. ================= */
-const START_DATE = new Date(2026,8,18); // Friday 18 Sep 2026 — moved forward 4 days from the 14 Sep restart above so workout and supplement-intake tracking start together on the same Day 1 (Simar's call, 17 Sep 2026); also the earliest navigable day. Program structure (25 weeks, deload at 13, Cycle 2 at 14-25) is unchanged — this only slides the calendar anchor, it is not another program restart.
+const START_DATE = new Date(2026,8,19); // Saturday 19 Sep 2026 — Day 1, moved forward one day from 18 Sep at Simar's request (19 Sep 2026). Same reasoning as every prior move: week/dayIndex keys are DERIVED from this date, so shifting it reinterprets every existing entry under a new week/day number rather than leaving it alone — hence the v7 wipe below. Program structure (25 weeks, deload at 13, Cycle 2 at 14-25) is unchanged; this only slides the calendar anchor. Note Day 1 is a SATURDAY: dayAbbrFor() derives weekday labels from START_DATE.getDay(), so every label follows automatically with no other edit — that is exactly the regression the 19 Sep day-label fix was built to prevent.
 // 12 (Cycle 1) + 1 (Deload, week 13) + 12 (Cycle 2, weeks 14-25) — approved 14 Sep 2026. See DELOAD_WEEK
 // and weekBlock() below for how Cycle 2 mirrors Cycle 1's block structure.
 const WEEKS = 25;
-const DAY_NAMES = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+// A PROGRAM day index (0..6) is an offset from START_DATE, NOT a calendar weekday. START_DATE is a
+// Saturday (19 Sep 2026), so index 0 IS a Saturday, index 1 a Sunday, and so on. The old fixed Mon-first
+// day-name list used to double as the label for these indexes, which made every day label read 4 days
+// early (index 0 rendering as "Mon" on a Friday) the moment START_DATE stopped being a Monday — and would
+// now be five days out, since Day 1 has since moved again to a Saturday. That list
+// is deliberately GONE rather than corrected, so it cannot be reached for this purpose again — label a
+// day index only via dayAbbrFor(), which derives the real weekday and so follows START_DATE
+// automatically if it ever moves again. Storage keys stay keyed by the raw index: nothing here moves,
+// rewrites or reinterprets existing data, this is display only.
+// Canvas text can't read CSS custom properties (fillStyle/font take strings, not var()), so the two
+// smallest steps of the type scale are mirrored here. Kept as named constants rather than inline
+// literals so a change to the scale has one obvious counterpart to update, instead of bare numbers
+// buried in drawing code that drift out of step unnoticed — the same trap the chart COLOURS fell into
+// before the 14 Sep 2026 restyle, when hardcoded dark-theme hex survived a var()-only sweep.
+const FONT_CAPTION = '11.5px Barlow';  // --fs-caption: chart axis labels
+const FONT_MICRO   = '10px Barlow';    // --fs-micro: gridline values, "no data" placeholder
+// Build stamp, shown in Reference > App updates. Update this on EVERY change to the file.
+// Why it exists: there was no way to tell which version was actually live on the phone, and that
+// cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
+// turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
+// "did my upload land?" in one look, instead of by debugging code that is already correct.
+const APP_BUILD = '2026-09-19 13:25';
+
+/* ================= CLOUD SYNC CONFIG =================
+ * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
+ * that is the whole point of the anon key, and it is why this is safe to commit to a public repo,
+ * unlike the GitHub token idea this replaced. What actually protects the data is Row Level Security
+ * on the table plus having public sign-ups DISABLED, not secrecy of this key.
+ * Leave them empty and the app behaves exactly as before: pure local storage, no network, no prompts.
+ */
+// Declared with `let`, not `const`, for two reasons: config that can be repointed at runtime is
+// reasonable in itself, and tests.html needs to aim them at a stubbed API to exercise the sync and
+// conflict logic without a live project. Treat them as constants in normal use.
+let SUPABASE_URL = 'https://msczgriqcweniaikbhjb.supabase.co';  // base project URL only — the code appends /rest/v1/ and /auth/v1/ itself
+let SUPABASE_ANON_KEY = 'sb_publishable_TFvreK82LHTPFrdHEUO85g_DTOlDYrl';  // publishable key — public by design; RLS is what protects the data
+const CLOUD_TABLE = 'tracker_data';
+// The auth session lives under its OWN localStorage key, deliberately NOT inside DATA. If it lived in
+// DATA it would be serialised into every backup export and shared out through the iOS share sheet —
+// the same class of mistake as putting a credential anywhere it can be copied by accident.
+const SESSION_KEY = 'hockey_tracker_session';
+const WEEKDAY_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]; // JS Date.getDay() order
+function dayAbbrFor(dayIndex){ return WEEKDAY_ABBR[(START_DATE.getDay() + dayIndex) % 7]; }
+const DAY_INDEXES = [0,1,2,3,4,5,6]; // iterate program day offsets; label them with dayAbbrFor()
 const DAY_NAMES_FULL = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 // Skip is now genuine-misses-only — Football/Hockey Training/Hockey Match are picked via the "Today's
 // session" picker (as the primary pick) or the separate "Log an extra activity" card (as an add-on),
@@ -505,7 +566,7 @@ const STORE_KEY = "hockey_tracker_v3";
 // NEVER bump STORE_KEY to migrate the schema — that orphans existing users' data under the old key
 // (silently invisible, not technically deleted, but indistinguishable from data loss to the user).
 // Instead bump SCHEMA_VERSION and add a migration step in migrateData() below.
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 let DATA = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
 function applyDefaults(d){
   d.w1 = d.w1 || {}; d.w2 = d.w2 || {}; d.cardio = d.cardio || {};
@@ -589,11 +650,226 @@ function migrateData(){
     DATA.settings = {};
     if(heightCm) DATA.settings.heightCm = heightCm;
   }
+  if(v < 7){
+    // v7: START_DATE moved forward one day (Fri 18 Sep -> Sat 19 Sep 2026), so Day 1 is today.
+    // Same unavoidable reasoning as every prior START_DATE move: week/dayIndex keys are DERIVED from
+    // START_DATE, so sliding it by a day would silently re-point every existing record at a different
+    // day of the program rather than leaving it where it was logged. A key-shifting migration was
+    // considered and rejected: day-keyed buckets could be shifted mechanically, but the week-keyed ones
+    // (body, cardio, session, tests) have no non-arbitrary answer when a week boundary moves under them,
+    // and inventing one silently corrupts real history. So: wipe, exactly as v2/v5/v6 did.
+    //
+    // NEW in v7, and worth keeping for every future restart: the pre-wipe data is ARCHIVED to its own
+    // localStorage key first, rather than simply discarded. Every earlier restart destroyed the old
+    // cycle outright with no recourse if the wipe turned out to be a mistake or mistimed. This costs
+    // nothing, never touches STORE_KEY itself, and makes the wipe recoverable — the archive can be
+    // read back out of localStorage and re-imported by hand if it is ever wanted.
+    try{
+      var hadAnything = ['w1','w2','cardio','mobility','body','injury','skip','activity','extra',
+                         'dayPick','session','tests','readiness','supplements']
+                        .some(function(k){ return DATA[k] && Object.keys(DATA[k]).length; });
+      if(hadAnything){
+        localStorage.setItem('hockey_tracker_archive_v6_' + ymd(new Date()), JSON.stringify(DATA));
+      }
+    }catch(e){ /* archiving is a safety net, never a reason to block the migration */ }
+
+    const heightCm = DATA.settings ? DATA.settings.heightCm : undefined;
+    DATA.w1 = {}; DATA.w2 = {}; DATA.cardio = {}; DATA.mobility = {};
+    DATA.body = {}; DATA.injury = {}; DATA.skip = {}; DATA.activity = {};
+    DATA.extra = {}; DATA.dayPick = {}; DATA.session = {}; DATA.tests = {};
+    DATA.readiness = {}; DATA.supplements = {}; DATA.pillStock = {};
+    DATA.settings = {};
+    if(heightCm) DATA.settings.heightCm = heightCm;
+  }
   DATA.schemaVersion = SCHEMA_VERSION;
 }
 applyDefaults(DATA);
 migrateData();
-function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); }
+// Local storage remains the SOURCE OF TRUTH for every read and write. The cloud is a sync target,
+// not a replacement: writes must stay instant and must keep working with no signal, because this app
+// is used in a gym. Replacing this with a network call would trade the app's best property for its
+// newest one.
+function save(){
+  DATA.settings.updatedAt = new Date().toISOString();
+  localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+  scheduleCloudPush();
+}
+
+/* ================= CLOUD SYNC =================
+ * Deliberately written against Supabase's plain REST API with fetch(), rather than pulling in the
+ * ~50KB supabase-js SDK from a CDN. This app is single-file and offline-first by design (fonts, SVG
+ * and icons are all inlined for the same reason); a CDN <script> would be the first thing in it that
+ * breaks without a network, and the REST surface needed here is four endpoints.
+ *
+ * Sync model: local-first, last-write-wins by the CLIENT's own updatedAt stamp.
+ *  - Every save() writes localStorage immediately and schedules a debounced push.
+ *  - On load (and on regaining focus) we pull the cloud row and compare updatedAt values.
+ *  - Comparing two CLIENT stamps rather than the server's updated_at keeps both sides of the
+ *    comparison in one clock domain, so server/client clock skew can't silently pick a loser.
+ *  - Before ever adopting cloud data over local, the local copy is archived to its own localStorage
+ *    key. Same reasoning as the v7 restart archive: an automated overwrite should be recoverable.
+ */
+let cloudState = { status:'off', message:'', busy:false };
+let cloudPushTimer = null;
+
+function cloudConfigured(){ return !!(SUPABASE_URL && SUPABASE_ANON_KEY); }
+function getSession(){
+  try{ return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }catch(e){ return null; }
+}
+function setSession(sess){
+  // expires_in is seconds from now; store an absolute instant so a reload can still judge freshness.
+  if(sess && sess.expires_in) sess.expires_at = Date.now() + (sess.expires_in * 1000);
+  try{ localStorage.setItem(SESSION_KEY, JSON.stringify(sess)); }catch(e){}
+}
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+
+async function authRequest(grant, body){
+  const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=' + grant, {
+    method:'POST',
+    headers:{ 'apikey': SUPABASE_ANON_KEY, 'Content-Type':'application/json' },
+    body: JSON.stringify(body)
+  });
+  const json = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(json.error_description || json.msg || json.error || ('HTTP ' + res.status));
+  return json;
+}
+
+// Supabase refresh tokens are SINGLE USE — each refresh returns a new one, and the old one is dead
+// the moment it is spent. Failing to persist the replacement locks the account out until a manual
+// sign-in, so the new session is written before anything else can throw.
+async function refreshSession(){
+  const sess = getSession();
+  if(!sess || !sess.refresh_token) throw new Error('not signed in');
+  const fresh = await authRequest('refresh_token', { refresh_token: sess.refresh_token });
+  setSession(fresh);
+  return fresh;
+}
+
+async function cloudSignIn(email, password){
+  const sess = await authRequest('password', { email: email, password: password });
+  setSession(sess);
+  return sess;
+}
+function cloudSignOut(){
+  clearSession();
+  cloudState = { status:'signed-out', message:'', busy:false };
+  renderReference();
+}
+
+// One retry on 401, after refreshing. Anything still failing is surfaced, never swallowed — a sync
+// that fails quietly is the failure mode that makes a backup worthless.
+async function cloudRest(path, opts, retried){
+  let sess = getSession();
+  if(!sess) throw new Error('not signed in');
+  if(sess.expires_at && Date.now() > sess.expires_at - 60000){
+    sess = await refreshSession();
+  }
+  opts = opts || {};
+  opts.headers = Object.assign({
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + sess.access_token,
+    'Content-Type': 'application/json'
+  }, opts.headers || {});
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, opts);
+  if(res.status === 401 && !retried){
+    await refreshSession();
+    return cloudRest(path, opts, true);
+  }
+  if(!res.ok){
+    const txt = await res.text().catch(()=>'');
+    throw new Error('HTTP ' + res.status + (txt ? ' — ' + txt.slice(0,120) : ''));
+  }
+  return res;
+}
+
+async function cloudPull(){
+  const sess = getSession();
+  const res = await cloudRest(CLOUD_TABLE + '?user_id=eq.' + encodeURIComponent(sess.user.id) + '&select=data', { method:'GET' });
+  const rows = await res.json();
+  return (rows && rows[0]) ? rows[0].data : null;
+}
+
+async function cloudPush(){
+  const sess = getSession();
+  await cloudRest(CLOUD_TABLE, {
+    method:'POST',
+    headers:{ 'Prefer':'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ user_id: sess.user.id, data: DATA, updated_at: new Date().toISOString() })
+  });
+}
+
+function stampOf(d){
+  return (d && d.settings && d.settings.updatedAt) ? Date.parse(d.settings.updatedAt) || 0 : 0;
+}
+
+// Debounced so a burst of edits (typing through a set) is one request, not twenty.
+function scheduleCloudPush(){
+  if(!cloudConfigured() || !getSession()) return;
+  if(cloudPushTimer) clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(function(){ cloudSyncNow(true); }, 4000);
+}
+
+async function cloudSyncNow(quiet){
+  if(!cloudConfigured() || !getSession() || cloudState.busy) return;
+  cloudState.busy = true;
+  if(!quiet){ cloudState.status = 'syncing'; renderReference(); }
+  try{
+    const remote = await cloudPull();
+    const localStamp = stampOf(DATA), remoteStamp = stampOf(remote);
+    if(remote && remoteStamp > localStamp){
+      // Cloud is genuinely newer (another device). Archive local before adopting it — an automatic
+      // overwrite of real training data should always be recoverable.
+      try{ localStorage.setItem('hockey_tracker_preSync_' + ymd(new Date()), JSON.stringify(DATA)); }catch(e){}
+      DATA = applyDefaults(remote);
+      migrateData();
+      localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+      cloudState = { status:'ok', message:'Pulled newer data from another device', busy:false };
+      renderToday(); renderReference();
+      return;
+    }
+    // `!remote` is load-bearing, not belt-and-braces. On the very first sign-in the cloud row does not
+    // exist yet, AND data logged before this feature shipped carries no settings.updatedAt — so both
+    // stamps read 0, `localStamp > remoteStamp` is false, and the existing training log would sit
+    // unsynced until the next edit happened to stamp it. If the cloud has nothing, always push.
+    if(!remote || localStamp > remoteStamp) await cloudPush();
+    cloudState = { status:'ok', message:'', busy:false };
+  }catch(e){
+    cloudState = { status:'error', message:(e && e.message) ? e.message : String(e), busy:false };
+  }
+  cloudState.busy = false;
+  renderReference();
+}
+
+function cloudStatusLine(){
+  if(!cloudConfigured()) return 'Not set up yet — add your Supabase URL and key in the code.';
+  if(!getSession())      return 'Signed out — your data is only on this device.';
+  if(cloudState.status === 'syncing') return 'Syncing…';
+  if(cloudState.status === 'error')   return 'Last sync FAILED: ' + cloudState.message;
+  const st = DATA.settings.updatedAt ? new Date(DATA.settings.updatedAt).toLocaleString() : 'never';
+  return 'Synced. Last change: ' + st + (cloudState.message ? ' — ' + cloudState.message : '');
+}
+
+async function doCloudSignIn(){
+  const email = document.getElementById('cloud-email').value.trim();
+  const pw    = document.getElementById('cloud-pw').value;
+  if(!email || !pw){ alert('Enter your email and password.'); return; }
+  cloudState = { status:'syncing', message:'', busy:false };
+  renderReference();
+  try{
+    await cloudSignIn(email, pw);
+    cloudState = { status:'ok', message:'Signed in', busy:false };
+    await cloudSyncNow(true);
+  }catch(e){
+    cloudState = { status:'error', message:(e && e.message) ? e.message : String(e), busy:false };
+  }
+  renderReference();
+}
+
+// Sync when the app is reopened or brought back to the foreground — the realistic moment another
+// device's changes need picking up, and cheap enough not to need a timer.
+window.addEventListener('visibilitychange', function(){
+  if(!document.hidden) cloudSyncNow(true);
+});
 
 /* ================= NAV ================= */
 document.querySelectorAll('nav.bottomnav button').forEach(b=>{
@@ -994,10 +1270,10 @@ function renderToday(){
       <div class="w">${fmtDate(currentDate)}${info.inProgram ? cycleTagFor(info.week) : ' · after program'}</div>
       <div class="jumprow">
         <select id="jump-week" onchange="jumpToWeekDay()">
-          ${Array.from({length:WEEKS},(_,i)=>i+1).map(w=>`<option value="${w}" ${w===jumpWeek?'selected':''}>${weekOptionLabel(w)}</option>`).join('')}
+          ${Array.from({length:WEEKS},(_,i)=>i+1).map(w=>`<option value="${esc(w)}" ${w===jumpWeek?'selected':''}>${weekOptionLabel(w)}</option>`).join('')}
         </select>
         <select id="jump-day" onchange="jumpToWeekDay()">
-          ${DAY_NAMES.map((d,i)=>`<option value="${i}" ${i===jumpDay?'selected':''}>${d}</option>`).join('')}
+          ${DAY_INDEXES.map(i=>`<option value="${esc(i)}" ${i===jumpDay?'selected':''}>${dayAbbrFor(i)}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -1027,10 +1303,10 @@ function renderToday(){
     <h3>This week</h3>
     ${shownTypes.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px">
       ${shownTypes.map(t=>`<div style="flex:1 1 auto;min-width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px">
-        <div style="font-size:10.5px;color:var(--text-dim);text-transform:uppercase;font-weight:600;letter-spacing:.02em">${esc(t.label)}</div>
-        <div style="font-size:15px;font-weight:800;margin-top:2px">${weekCounts[t.id]}</div>
+        <div style="font-size:var(--fs-micro);color:var(--text-dim);text-transform:uppercase;font-weight:600;letter-spacing:.02em">${esc(t.label)}</div>
+        <div style="font-size:var(--fs-ui);font-weight:800;margin-top:2px">${weekCounts[t.id]}</div>
       </div>`).join('')}
-    </div>` : `<div style="font-size:12px;color:var(--text-dim)">Nothing logged yet this week.</div>`}
+    </div>` : `<div style="font-size:var(--fs-body);color:var(--text-dim)">Nothing logged yet this week.</div>`}
   </div>`;
 
   // Pick what today actually is — no plan/default behind this anymore, just a plain choice per day.
@@ -1054,7 +1330,7 @@ function renderToday(){
     </div>
     ${skipRec.skipped ? fieldHtml('Reason', `<select data-k="skip" data-row="${dayKey}" data-f="reason" onchange="onSkipReasonChange('${dayKey}',this.value)">
       ${SKIP_REASONS.map(r=>`<option ${skipRec.reason===r?'selected':''}>${r}</option>`).join('')}</select>`)
-      : `<div style="font-size:11.5px;color:var(--text-dim)">Injured, ill, or too busy today? Log the reason here — it won't count against your programmed-plan adherence.</div>`}
+      : `<div style="font-size:var(--fs-caption);color:var(--text-dim)">Injured, ill, or too busy today? Log the reason here — it won't count against your programmed-plan adherence.</div>`}
   </div></details>`;
 
   // Extra activity — always available, independent of both the picker above and the skip toggle. This
@@ -1081,21 +1357,21 @@ function renderToday(){
       </select>`)}
       ${extraIsCardio ? `
         <div class="row3">
-          ${fieldHtml('Avg HR (bpm)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="hr" value="${extraRec.hr??''}">`)}
-          ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${extraRec.distance??''}">`)}
-          ${fieldHtml('Time (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${extraRec.duration??''}">`)}
+          ${fieldHtml('Avg HR (bpm)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="hr" value="${esc(extraRec.hr??'')}">`)}
+          ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${esc(extraRec.distance??'')}">`)}
+          ${fieldHtml('Time (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${esc(extraRec.duration??'')}">`)}
         </div>
-        ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${extraRec.calories??''}">`)}
-        ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="extra" data-row="${dayKey}" data-f="rpe" value="${extraRec.rpe??''}">`)}
-        <div style="font-size:11px;color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
+        ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${esc(extraRec.calories??'')}">`)}
+        ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="extra" data-row="${dayKey}" data-f="rpe" value="${esc(extraRec.rpe??'')}">`)}
+        <div style="font-size:var(--fs-caption);color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
       ` : `
         <div class="row2">
-          ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${extraRec.calories??''}">`)}
-          ${fieldHtml('Distance run (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${extraRec.distance??''}">`)}
+          ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${esc(extraRec.calories??'')}">`)}
+          ${fieldHtml('Distance run (km)', `<input type="number" step="0.1" data-k="extra" data-row="${dayKey}" data-f="distance" value="${esc(extraRec.distance??'')}">`)}
         </div>
         <div class="row2">
-          ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="hr" value="${extraRec.hr??''}">`)}
-          ${fieldHtml('Duration (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${extraRec.duration??''}">`)}
+          ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="hr" value="${esc(extraRec.hr??'')}">`)}
+          ${fieldHtml('Duration (min)', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="duration" value="${esc(extraRec.duration??'')}">`)}
         </div>
         ${extraRec.type==='Hockey Match' ? `
           <div class="row2">
@@ -1107,7 +1383,7 @@ function renderToday(){
       `}
       ${fieldHtml('Completed?', ynPills('extra', dayKey, 'done', extraRec.done))}
       ${fieldHtml('Notes', `<input data-k="extra" data-row="${dayKey}" data-f="notes" value="${esc(extraRec.notes||'')}">`)}
-    ` : `<div style="font-size:11.5px;color:var(--text-dim)">Did extra cardio, a walk, football, hockey training, or play a match on top of what's picked above? Log it here.</div>`}
+    ` : `<div style="font-size:var(--fs-caption);color:var(--text-dim)">Did extra cardio, a walk, football, hockey training, or play a match on top of what's picked above? Log it here.</div>`}
   </div></details>`;
   if(extraRec.active && extraRec.type){
     html += `<div class="skip-banner" style="background:var(--success-dim);border-color:var(--success);color:var(--success)"><span>${esc(extraRec.type)} logged as an extra today</span></div>`;
@@ -1148,7 +1424,7 @@ function renderToday(){
           &nbsp;${sameExercise ? `<a class="demo" href="${gymLink}" target="_blank" rel="noopener">watch&#9654;</a>`
             : `<a class="demo" href="${gymLink}" target="_blank" rel="noopener">gym&#9654;</a> &middot; <a class="demo" href="${homeLink}" target="_blank" rel="noopener">home&#9654;</a>`}</div>
         <div class="extarget">Target: ${targets[0]} x ${targets[1]}, rest ${targets[2]}</div>
-        ${suggestion ? `<div style="font-size:11px;color:var(--link);margin:-4px 0 8px">${suggestion.text}</div>` : ''}
+        ${suggestion ? `<div style="font-size:var(--fs-caption);color:var(--link);margin:-4px 0 8px">${suggestion.text}</div>` : ''}
         ${sameExercise ? '' : fieldHtml('Exercise used', `<select data-k="${key}" data-row="${rowKey}" data-f="used">
           <option value=""></option><option ${rec.used===gymEx?'selected':''}>${esc(gymEx)}</option>
           <option ${rec.used===homeEx?'selected':''}>${esc(homeEx)}</option></select>`)}
@@ -1159,15 +1435,15 @@ function renderToday(){
             return `<div class="setrow">
               <div class="setno"><span>Set ${i+1}</span><span class="settarget">Target ${targets[1]}</span></div>
               <span id="wraphold-${compositeKey}">${holdTimerHtml(rowKey, key, i)}</span>
-              ${fieldHtml('Held (seconds)', `<input type="number" step="1" data-k="${key}" data-row="${rowKey}" data-set="${i}" data-f="seconds" value="${s.seconds??''}">`)}
+              ${fieldHtml('Held (seconds)', `<input type="number" step="1" data-k="${key}" data-row="${rowKey}" data-set="${i}" data-f="seconds" value="${esc(s.seconds??'')}">`)}
             </div>`;
           }
           const restBtnId = 'rest-btn-'+rowKey+'-'+i;
           return `<div class="setrow">
             <div class="setno"><span>Set ${i+1}</span><span class="settarget">Target ${targets[1]}</span></div>
             <div class="row2">
-              ${fieldHtml('Weight (kg)', `<input type="number" step="0.5" data-k="${key}" data-row="${rowKey}" data-set="${i}" data-f="weight" value="${s.weight??''}">`)}
-              ${fieldHtml('Reps', `<input type="number" step="1" data-k="${key}" data-row="${rowKey}" data-set="${i}" data-f="reps" value="${s.reps??''}" placeholder="${esc(targets[1])}">`)}
+              ${fieldHtml('Weight (kg)', `<input type="number" step="0.5" data-k="${key}" data-row="${rowKey}" data-set="${i}" data-f="weight" value="${esc(s.weight??'')}">`)}
+              ${fieldHtml('Reps', `<input type="number" step="1" data-k="${key}" data-row="${rowKey}" data-set="${i}" data-f="reps" value="${esc(s.reps??'')}" placeholder="${esc(targets[1])}">`)}
             </div>
             ${restSeconds!=null ? `<span id="wrap-${restBtnId}">${restTimerHtml(restBtnId, restSeconds)}</span>` : ''}
           </div>`;
@@ -1200,12 +1476,12 @@ function renderToday(){
       <div class="exname">Session RPE</div>
       <div class="extarget">How hard did the WHOLE session feel? ${RPE_LEGEND}</div>
       <div class="row2">
-        ${fieldHtml('RPE (0-10)', `<input type="number" min="0" max="10" data-k="session" data-row="${sessKey}" data-f="rpe" value="${sessRec.rpe??''}">`)}
-        ${fieldHtml('Session duration (min)', `<input type="number" data-k="session" data-row="${sessKey}" data-f="duration" value="${sessRec.duration??''}">`)}
+        ${fieldHtml('RPE (0-10)', `<input type="number" min="0" max="10" data-k="session" data-row="${sessKey}" data-f="rpe" value="${esc(sessRec.rpe??'')}">`)}
+        ${fieldHtml('Session duration (min)', `<input type="number" data-k="session" data-row="${sessKey}" data-f="duration" value="${esc(sessRec.duration??'')}">`)}
       </div>
       <div class="row2">
-        ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="session" data-row="${sessKey}" data-f="hr" value="${sessRec.hr??''}">`)}
-        ${fieldHtml('Active calories', `<input type="number" data-k="session" data-row="${sessKey}" data-f="calories" value="${sessRec.calories??''}">`)}
+        ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="session" data-row="${sessKey}" data-f="hr" value="${esc(sessRec.hr??'')}">`)}
+        ${fieldHtml('Active calories', `<input type="number" data-k="session" data-row="${sessKey}" data-f="calories" value="${esc(sessRec.calories??'')}">`)}
       </div>
     </div>`;
     html += `</div></details>`;
@@ -1213,15 +1489,15 @@ function renderToday(){
     const rowKey = `${week}_${todayType}`;
     const rec = DATA.cardio[rowKey] || {};
     html += `<details class="card" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">Cardio — ${esc(todayType)}</span><span class="tag">${block}</span></summary><div class="card-body">
-      <div style="font-size:12px;color:var(--text-dim);margin:-4px 0 12px">${(CARDIO_TARGETS[todayType]||{})[block]||''}</div>
+      <div style="font-size:var(--fs-body);color:var(--text-dim);margin:-4px 0 12px">${(CARDIO_TARGETS[todayType]||{})[block]||''}</div>
       <div class="row3">
-        ${fieldHtml('Avg HR (bpm)', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="hr" value="${rec.hr??''}">`)}
-        ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="cardio" data-row="${rowKey}" data-f="dist" value="${rec.dist??''}">`)}
-        ${fieldHtml('Time (min)', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="dur" value="${rec.dur??''}">`)}
+        ${fieldHtml('Avg HR (bpm)', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="hr" value="${esc(rec.hr??'')}">`)}
+        ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="cardio" data-row="${rowKey}" data-f="dist" value="${esc(rec.dist??'')}">`)}
+        ${fieldHtml('Time (min)', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="dur" value="${esc(rec.dur??'')}">`)}
       </div>
-      ${fieldHtml('Active calories', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="calories" value="${rec.calories??''}">`)}
-      ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="cardio" data-row="${rowKey}" data-f="rpe" value="${rec.rpe??''}">`)}
-      <div style="font-size:11px;color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
+      ${fieldHtml('Active calories', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="calories" value="${esc(rec.calories??'')}">`)}
+      ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="cardio" data-row="${rowKey}" data-f="rpe" value="${esc(rec.rpe??'')}">`)}
+      <div style="font-size:var(--fs-caption);color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
       ${fieldHtml('Completed?', ynPills('cardio', rowKey, 'done', rec.done))}
       ${fieldHtml('Notes', `<textarea data-k="cardio" data-row="${rowKey}" data-f="notes">${esc(rec.notes||'')}</textarea>`)}
     </div></details>`;
@@ -1232,12 +1508,12 @@ function renderToday(){
     const rec = DATA.activity[dayKey] || {};
     html += `<details class="card" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">${esc(todayType)}</span><span class="tag">today's pick</span></summary><div class="card-body">
       <div class="row2">
-        ${fieldHtml('Active calories', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="calories" value="${rec.calories??''}">`)}
-        ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="activity" data-row="${dayKey}" data-f="distance" value="${rec.distance??''}">`)}
+        ${fieldHtml('Active calories', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="calories" value="${esc(rec.calories??'')}">`)}
+        ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="activity" data-row="${dayKey}" data-f="distance" value="${esc(rec.distance??'')}">`)}
       </div>
       <div class="row2">
-        ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="hr" value="${rec.hr??''}">`)}
-        ${fieldHtml('Duration (min)', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="duration" value="${rec.duration??''}">`)}
+        ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="hr" value="${esc(rec.hr??'')}">`)}
+        ${fieldHtml('Duration (min)', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="duration" value="${esc(rec.duration??'')}">`)}
       </div>
       ${todayType==='Hockey Match' ? `
         <div class="row2">
@@ -1258,7 +1534,7 @@ function renderToday(){
   html += `<details class="card" ${cardOpenAttrs('card-mobility')}><summary><span class="sumtxt">Mobility</span><span class="tag">daily</span></summary><div class="card-body">
     ${fieldHtml('Full routine done?', ynPills('mobility', dayKey, 'full', mobRec.full))}
     ${fieldHtml('Quick pre-workout version done?', ynPills('mobility', dayKey, 'quick', mobRec.quick))}
-    ${fieldHtml('Tightness (1-5)', `<input type="number" min="1" max="5" data-k="mobility" data-row="${dayKey}" data-f="tight" value="${mobRec.tight??''}">`)}
+    ${fieldHtml('Tightness (1-5)', `<input type="number" min="1" max="5" data-k="mobility" data-row="${dayKey}" data-f="tight" value="${esc(mobRec.tight??'')}">`)}
     ${fieldHtml('Exercises skipped', `<input data-k="mobility" data-row="${dayKey}" data-f="skipped" value="${esc(mobRec.skipped||'')}">`)}
     ${fieldHtml('Notes', `<input data-k="mobility" data-row="${dayKey}" data-f="notes" value="${esc(mobRec.notes||'')}">`)}
   </div></details>`;
@@ -1267,7 +1543,7 @@ function renderToday(){
   // higher-is-better) to complement session RPE, which is a lagging, post-session-only signal.
   const readyRec = DATA.readiness[dayKey] || {};
   html += `<details class="card" ${cardOpenAttrs('card-readiness')}><summary><span class="sumtxt">Readiness</span><span class="tag">daily</span></summary><div class="card-body">
-    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">Quick pre-session check, higher = better on every scale.</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:10px">Quick pre-session check, higher = better on every scale.</div>
     ${fieldHtml('Soreness (1 very sore — 5 fresh)', scalePills('readiness', dayKey, 'soreness', readyRec.soreness))}
     ${fieldHtml('Sleep quality (1 poor — 5 great)', scalePills('readiness', dayKey, 'sleep', readyRec.sleep))}
     ${fieldHtml('Stress (1 high — 5 calm)', scalePills('readiness', dayKey, 'stress', readyRec.stress))}
@@ -1307,8 +1583,8 @@ function renderToday(){
         }).join('')}
       </div>`;
     }).join('')}
-    <div class="skip-banner" style="background:var(--surface2);border-color:var(--border);color:var(--text-dim);font-weight:400;font-size:11.5px;display:block">Daily protein target (${esc(proteinTgt.label.toLowerCase())}): <b>${esc(proteinTgt.range)}</b> at 109kg. Your 2 daily shakes cover ~42g regardless of day type — the rest needs to come from food across meals.</div>
-    <div style="font-size:10.5px;color:var(--text-faint);margin-top:10px">Phone reminders come from your Calendar/Shortcuts, not this app — this is just your log.</div>
+    <div class="skip-banner" style="background:var(--surface2);border-color:var(--border);color:var(--text-dim);font-weight:400;font-size:var(--fs-caption);display:block">Daily protein target (${esc(proteinTgt.label.toLowerCase())}): <b>${esc(proteinTgt.range)}</b> at 109kg. Your 2 daily shakes cover ~42g regardless of day type — the rest needs to come from food across meals.</div>
+    <div style="font-size:var(--fs-micro);color:var(--text-faint);margin-top:10px">Phone reminders come from your Calendar/Shortcuts, not this app — this is just your log.</div>
   </div></details>`;
 
   // Weekly bodyweight check-in (Monday only)
@@ -1316,8 +1592,8 @@ function renderToday(){
     const bodyRec = DATA.body[String(week)] || {};
     html += `<details class="card" ${cardOpenAttrs('card-checkin')}><summary><span class="sumtxt">Weekly check-in</span><span class="tag">Week ${week}</span></summary><div class="card-body">
       <div class="row2">
-        ${fieldHtml('Bodyweight (kg)', `<input type="number" step="0.1" data-k="body" data-row="${week}" data-f="weight" value="${bodyRec.weight??''}">`)}
-        ${fieldHtml('Resting HR (bpm)', `<input type="number" data-k="body" data-row="${week}" data-f="rhr" value="${bodyRec.rhr??''}">`)}
+        ${fieldHtml('Bodyweight (kg)', `<input type="number" step="0.1" data-k="body" data-row="${week}" data-f="weight" value="${esc(bodyRec.weight??'')}">`)}
+        ${fieldHtml('Resting HR (bpm)', `<input type="number" data-k="body" data-row="${week}" data-f="rhr" value="${esc(bodyRec.rhr??'')}">`)}
       </div>
       ${fieldHtml('Notes', `<input data-k="body" data-row="${week}" data-f="notes" value="${esc(bodyRec.notes||'')}">`)}
     </div></details>`;
@@ -1330,13 +1606,13 @@ function renderToday(){
       ${fieldHtml('Body part / type', `<select data-k="injury" data-row="${dayKey}" data-f="type">
         <option value=""></option>${INJURY_TYPES.map(t=>`<option ${injRec.type===t?'selected':''}>${t}</option>`).join('')}</select>`)}
       <div class="row2">
-        ${fieldHtml('Severity (1-5)', `<input type="number" min="1" max="5" data-k="injury" data-row="${dayKey}" data-f="severity" value="${injRec.severity??''}">`)}
+        ${fieldHtml('Severity (1-5)', `<input type="number" min="1" max="5" data-k="injury" data-row="${dayKey}" data-f="severity" value="${esc(injRec.severity??'')}">`)}
         ${fieldHtml('Status', `<select data-k="injury" data-row="${dayKey}" data-f="status">
           <option value=""></option>${STATUS_TYPES.map(s=>`<option ${injRec.status===s?'selected':''}>${s}</option>`).join('')}</select>`)}
       </div>
       ${fieldHtml('How it happened', `<input data-k="injury" data-row="${dayKey}" data-f="cause" value="${esc(injRec.cause||'')}">`)}
       ${fieldHtml('Action taken', `<input data-k="injury" data-row="${dayKey}" data-f="action" value="${esc(injRec.action||'')}">`)}
-      ${fieldHtml('Days missed', `<input type="number" data-k="injury" data-row="${dayKey}" data-f="daysMissed" value="${injRec.daysMissed??''}">`)}
+      ${fieldHtml('Days missed', `<input type="number" data-k="injury" data-row="${dayKey}" data-f="daysMissed" value="${esc(injRec.daysMissed??'')}">`)}
       ${fieldHtml('Notes', `<textarea data-k="injury" data-row="${dayKey}" data-f="notes">${esc(injRec.notes||'')}</textarea>`)}
     </div>
   </details>`;
@@ -1425,7 +1701,7 @@ function renderHistoryList(){
       });
     }
     if(historyFilter==='all'||historyFilter==='mobility'){
-      DAY_NAMES.forEach((d,di)=>{
+      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
         const rec = DATA.mobility[`${week}_${di}`];
         if(!rec || (!rec.full && !rec.quick)) return;
         entries.push({title:'Mobility — '+d, meta:`Full:${rec.full||'-'} Quick:${rec.quick||'-'} Tightness:${rec.tight??'-'}`});
@@ -1436,14 +1712,14 @@ function renderHistoryList(){
       if(rec && (rec.weight || rec.rhr)) entries.push({title:'Body check-in', meta:`${rec.weight?rec.weight+'kg':''} ${rec.rhr?rec.rhr+'bpm RHR':''}`});
     }
     if(historyFilter==='all'||historyFilter==='injury'){
-      DAY_NAMES.forEach((d,di)=>{
+      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
         const rec = DATA.injury[`${week}_${di}`];
         if(!rec) return;
         if(rec.type) entries.push({title:'Injury — '+d, meta:`${rec.type} · severity ${rec.severity??'-'} · ${rec.status||'-'}`});
       });
     }
     if(historyFilter==='all'||historyFilter==='activity'){
-      DAY_NAMES.forEach((d,di)=>{
+      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
         const rec = DATA.activity[`${week}_${di}`];
         if(rec && (rec.calories || rec.distance || rec.hr || rec.duration || rec.done)){
           const type = effectiveTypeFor(week, di) || 'Activity';
@@ -1458,7 +1734,7 @@ function renderHistoryList(){
       });
     }
     if(historyFilter==='all'||historyFilter==='skipped'){
-      DAY_NAMES.forEach((d,di)=>{
+      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
         const rec = DATA.skip[`${week}_${di}`];
         if(!rec || !rec.skipped) return;
         entries.push({title:'Skipped — '+d, meta:rec.reason||'Rest'});
@@ -1471,7 +1747,7 @@ function renderHistoryList(){
       }
     }
     if(historyFilter==='all'||historyFilter==='readiness'){
-      DAY_NAMES.forEach((d,di)=>{
+      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
         const r = DATA.readiness[`${week}_${di}`];
         if(!r) return;
         const parts = [];
@@ -1484,7 +1760,7 @@ function renderHistoryList(){
       });
     }
     if(historyFilter==='all'||historyFilter==='supplements'){
-      DAY_NAMES.forEach((d,di)=>{
+      DAY_INDEXES.forEach(di=>{ const d = dayAbbrFor(di);
         const rec = DATA.supplements[`${week}_${di}`];
         if(!rec || !Object.keys(rec).length) return;
         const stack = supplementScheduleFor(effectiveTypeFor(week, di));
@@ -1689,7 +1965,7 @@ function renderHeatmapGrid(){
     html += `<div class="heatmap-row"><div class="heatmap-wk">W${week}</div>`;
     for(let dayIndex=0; dayIndex<7; dayIndex++){
       const status = dayStatus(week, dayIndex);
-      html += `<div class="heatmap-cell" style="background:${cellColor[status]}" title="${DAY_NAMES[dayIndex]} Wk${week}: ${status}"></div>`;
+      html += `<div class="heatmap-cell" style="background:${cellColor[status]}" title="${dayAbbrFor(dayIndex)} Wk${week}: ${status}"></div>`;
     }
     html += `</div>`;
   }
@@ -1929,7 +2205,7 @@ function workloadRatioNote(r){
   else if(r.ratio > 1.3){ msg = `This week's load is ${pct}% of your last ${r.weeksUsed}-week average — a bit above the typical range. Keep an eye on it.`; color='var(--warn)'; }
   else if(r.ratio < 0.8){ msg = `This week's load is ${pct}% of your last ${r.weeksUsed}-week average — lighter than usual (could be planned recovery, or a sign you're doing less than you think).`; color='var(--text-dim)'; }
   else { msg = `This week's load is ${pct}% of your last ${r.weeksUsed}-week average — in your typical range.`; color='var(--success)'; }
-  return `<div style="font-size:11.5px;color:${color};margin-top:6px">${msg}</div>`;
+  return `<div style="font-size:var(--fs-caption);color:${color};margin-top:6px">${msg}</div>`;
 }
 
 // Checkpoint weeks per cycle — Cycle 1 tests at absolute weeks 1/6/12, Cycle 2 at 14/19/25 (its own
@@ -1959,14 +2235,14 @@ function testDelta(field, higherIsBetter, cycle){
 function testFieldRow(label, field, unit, protocol){
   const c1 = TEST_CHECKPOINTS[1], c2 = TEST_CHECKPOINTS[2];
   return `<div class="field"><label>${esc(label)} (${unit})</label>
-    <div style="font-size:11px;color:var(--text-faint);margin:-2px 0 6px">${esc(protocol)}</div>
-    <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.02em;margin-bottom:2px">Cycle 1</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin:-2px 0 6px">${esc(protocol)}</div>
+    <div style="font-size:var(--fs-micro);color:var(--text-faint);text-transform:uppercase;letter-spacing:.02em;margin-bottom:2px">Cycle 1</div>
     <div class="row3">
-      ${c1.map((w,i)=>`<input type="number" step="0.1" placeholder="Wk${i===0?1:i===1?6:12}" data-k="tests" data-row="${w}" data-f="${field}" value="${(DATA.tests[w]&&DATA.tests[w][field]!==undefined)?DATA.tests[w][field]:''}">`).join('')}
+      ${c1.map((w,i)=>`<input type="number" step="0.1" placeholder="Wk${i===0?1:i===1?6:12}" data-k="tests" data-row="${w}" data-f="${field}" value="${esc((DATA.tests[w]&&DATA.tests[w][field]!==undefined)?DATA.tests[w][field]:'')}">`).join('')}
     </div>
-    <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.02em;margin:8px 0 2px">Cycle 2</div>
+    <div style="font-size:var(--fs-micro);color:var(--text-faint);text-transform:uppercase;letter-spacing:.02em;margin:8px 0 2px">Cycle 2</div>
     <div class="row3">
-      ${c2.map((w,i)=>`<input type="number" step="0.1" placeholder="Wk${i===0?1:i===1?6:12}" data-k="tests" data-row="${w}" data-f="${field}" value="${(DATA.tests[w]&&DATA.tests[w][field]!==undefined)?DATA.tests[w][field]:''}">`).join('')}
+      ${c2.map((w,i)=>`<input type="number" step="0.1" placeholder="Wk${i===0?1:i===1?6:12}" data-k="tests" data-row="${w}" data-f="${field}" value="${esc((DATA.tests[w]&&DATA.tests[w][field]!==undefined)?DATA.tests[w][field]:'')}">`).join('')}
     </div></div>`;
 }
 function testDeltaHtml(field, unit, higherIsBetter){
@@ -1975,7 +2251,7 @@ function testDeltaHtml(field, unit, higherIsBetter){
     if(!d) return '';
     const color = d.improved ? 'var(--success)' : 'var(--danger)';
     const relWk = w => w===TEST_CHECKPOINTS[cycle][0]?1 : w===TEST_CHECKPOINTS[cycle][1]?6 : 12;
-    return `<div style="font-size:11.5px;color:${color}">Cycle ${cycle} — Wk1 &rarr; Wk${relWk(d.latestWeek)}: ${d.delta>0?'+':''}${d.delta.toFixed(2)}${unit} &mdash; ${d.improved?'improved':'declined'}</div>`;
+    return `<div style="font-size:var(--fs-caption);color:${color}">Cycle ${cycle} — Wk1 &rarr; Wk${relWk(d.latestWeek)}: ${d.delta>0?'+':''}${d.delta.toFixed(2)}${unit} &mdash; ${d.improved?'improved':'declined'}</div>`;
   }).filter(Boolean);
   return lines.length ? `<div style="margin:-4px 0 12px">${lines.join('')}</div>` : '';
 }
@@ -2055,23 +2331,23 @@ function renderDashboard(){
     ${bar('Strength - Workout 2', w2.done, w2.total)}
     ${bar('Cardio', cardio.done, cardio.total)}
     ${bar('Mobility', mobDone, mobTotal)}
-    <div style="font-size:11px;color:var(--text-faint)">${skippedCount} session${skippedCount===1?'':'s'} marked as skipped (${healthSkips} injury/illness, ${restSkips} rest/busy) — excluded from these totals.</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-faint)">${skippedCount} session${skippedCount===1?'':'s'} marked as skipped (${healthSkips} injury/illness, ${restSkips} rest/busy) — excluded from these totals.</div>
   </div>
   <div class="card">
     <h3>Training Streak <span class="tag">${currentStreak()} day${currentStreak()===1?'':'s'}</span></h3>
-    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">Green = trained, grey = genuine rest/skip (doesn't break your streak), red = missed. One row per week.</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:10px">Green = trained, grey = genuine rest/skip (doesn't break your streak), red = missed. One row per week.</div>
     ${renderHeatmapGrid()}
   </div>
   <div class="card">
     <h3>Body Mass Index</h3>
-    ${fieldHtml('Height (cm) — enter once', `<input type="number" step="0.1" value="${DATA.settings.heightCm??''}" onchange="setHeight(this.value)">`)}
-    ${bmi ? `<div class="value" style="margin:4px 0">${bmi.bmi.toFixed(1)} <span style="font-size:13px;color:var(--text-dim);font-weight:600">— ${bmi.category}</span></div>
-      <div style="font-size:11px;color:var(--text-faint)">Calculated from your most recent weekly weigh-in. Standard BMI bands don't distinguish muscle from fat — take "Overweight" with a grain of salt if it's driven by strength gains, not body fat.</div>`
+    ${fieldHtml('Height (cm) — enter once', `<input type="number" step="0.1" value="${esc(DATA.settings.heightCm??'')}" onchange="setHeight(this.value)">`)}
+    ${bmi ? `<div class="value" style="margin:4px 0">${bmi.bmi.toFixed(1)} <span style="font-size:var(--fs-body);color:var(--text-dim);font-weight:600">— ${bmi.category}</span></div>
+      <div style="font-size:var(--fs-caption);color:var(--text-faint)">Calculated from your most recent weekly weigh-in. Standard BMI bands don't distinguish muscle from fat — take "Overweight" with a grain of salt if it's driven by strength gains, not body fat.</div>`
       : `<div class="note" style="margin:8px 0 0">Enter your height above (and at least one weekly bodyweight check-in) to calculate BMI.</div>`}
   </div>
   <div class="card">
     <h3>Fitness Tests <span class="tag">C1+C2 · Wk 1/6/12</span></h3>
-    <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">Same benchmark, same conditions, three checkpoints — this is the only thing in the app that tells you whether 12 weeks of training actually worked, not just whether it happened.</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:10px">Same benchmark, same conditions, three checkpoints — this is the only thing in the app that tells you whether 12 weeks of training actually worked, not just whether it happened.</div>
     ${testFieldRow('20m Sprint', 'sprint', 'sec', 'Standing start, 20m maximal sprint, timed.')}
     ${testDeltaHtml('sprint', 's', false)}
     ${testFieldRow('5-0-5 Change of Direction', 'cod', 'sec', "10m run-in, sprint 5m, plant + turn 180°, sprint back 5m — time the middle 5m-0-5m only.")}
@@ -2086,7 +2362,7 @@ function renderDashboard(){
   <div class="card"><h3>Weekly resting heart rate</h3><canvas id="rhr-chart" height="90"></canvas></div>
   <div class="card"><h3>Weekly Readiness <span class="tag">avg of 4, higher=better</span></h3><canvas id="readiness-chart" height="90"></canvas></div>
   <div class="card"><h3>Weekly Training Load <span class="tag">RPE &times; mins</span></h3>
-    <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">Sum of session RPE &times; session duration across everything logged that week. Watch for sharp spikes, not just the level — that's usually what precedes a niggle.</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:8px">Sum of session RPE &times; session duration across everything logged that week. Watch for sharp spikes, not just the level — that's usually what precedes a niggle.</div>
     <canvas id="load-chart" height="90"></canvas>
     ${workloadRatioNote(wlRatio)}
   </div>
@@ -2096,7 +2372,7 @@ function renderDashboard(){
       <optgroup label="Workout 1">${strengthExerciseList().filter(e=>e.group==='Workout 1').map(e=>`<option value="${e.key}|${e.slot}" ${selectedStrengthEx.key===e.key&&selectedStrengthEx.slot===e.slot?'selected':''}>${esc(e.label)}</option>`).join('')}</optgroup>
       <optgroup label="Workout 2">${strengthExerciseList().filter(e=>e.group==='Workout 2').map(e=>`<option value="${e.key}|${e.slot}" ${selectedStrengthEx.key===e.key&&selectedStrengthEx.slot===e.slot?'selected':''}>${esc(e.label)}</option>`).join('')}</optgroup>
     </select>`)}
-    <div id="strength-chart-label" style="font-size:11px;color:var(--text-dim);margin:-6px 0 8px"></div>
+    <div id="strength-chart-label" style="font-size:var(--fs-caption);color:var(--text-dim);margin:-6px 0 8px"></div>
     <canvas id="strength-chart" height="90"></canvas>
   </div>
   <div class="card">
@@ -2153,7 +2429,7 @@ function drawLineChart(canvasId, weeks, values, color){
 
   const nums = values.filter(v=>v!=null&&!isNaN(v)&&v!==0);
   if(nums.length===0){
-    ctx.fillStyle='#8995A9'; ctx.font='11px Barlow'; ctx.textAlign='center';
+    ctx.fillStyle='#8995A9'; ctx.font=FONT_CAPTION; ctx.textAlign='center';
     ctx.fillText('No data logged yet', w/2, h/2+4);
     ctx.textAlign='left';
     return;
@@ -2166,7 +2442,7 @@ function drawLineChart(canvasId, weeks, values, color){
   // Pick label precision from the data's own scale so small values (e.g. sleep hours) don't all round to
   // the same integer — that was producing duplicate "1, 1, 0" axis labels when nothing had been logged yet.
   const decimals = maxV < 3 ? 1 : maxV < 15 ? 1 : 0;
-  ctx.strokeStyle='#D5DBE5'; ctx.lineWidth=1; ctx.font='8px Barlow'; ctx.fillStyle='#8995A9';
+  ctx.strokeStyle='#D5DBE5'; ctx.lineWidth=1; ctx.font=FONT_MICRO; ctx.fillStyle='#8995A9';
   for(let i=0;i<=2;i++){ const y=padT+plotH-(plotH*i/2); ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke(); ctx.fillText((maxV*i/2).toFixed(decimals),2,y+3); }
   ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath(); let started=false;
   values.forEach((v,i)=>{ if(v==null||isNaN(v)) return; const x=padL+plotW*(i/(weeks.length-1)); const y=padT+plotH-(plotH*(v/(maxV||1))); if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y); });
@@ -2175,7 +2451,7 @@ function drawLineChart(canvasId, weeks, values, color){
   values.forEach((v,i)=>{ if(v==null||isNaN(v)) return; const x=padL+plotW*(i/(weeks.length-1)); const y=padT+plotH-(plotH*(v/(maxV||1))); ctx.beginPath(); ctx.arc(x,y,2,0,7); ctx.fill(); });
   // X-axis: always anchor the first and last week so the chart visibly spans the full 12-week program,
   // plus a couple of markers in between.
-  ctx.fillStyle='#8995A9'; ctx.font='8px Barlow';
+  ctx.fillStyle='#8995A9'; ctx.font=FONT_MICRO;
   const lastIdx = weeks.length-1;
   weeks.forEach((wk,i)=>{
     if(i!==0 && i!==lastIdx && wk%3!==1) return;
@@ -2261,57 +2537,90 @@ function onPlateCalcInput(){
   if(!target || isNaN(target)){ out.innerHTML = ''; return; }
   const r = platesFor(target, barKg);
   if(r.belowBar){
-    out.innerHTML = `<div style="font-size:12.5px;color:var(--warn)">Lighter than the bar itself (${barKg}kg) — use dumbbells or a lighter bar instead.</div>`;
+    out.innerHTML = `<div style="font-size:var(--fs-body);color:var(--warn)">Lighter than the bar itself (${barKg}kg) — use dumbbells or a lighter bar instead.</div>`;
     return;
   }
   if(r.plates.length === 0){
-    out.innerHTML = `<div style="font-size:13px;color:var(--text-dim)">Just the bar — ${barKg}kg, no plates needed.</div>`;
+    out.innerHTML = `<div style="font-size:var(--fs-body);color:var(--text-dim)">Just the bar — ${barKg}kg, no plates needed.</div>`;
     return;
   }
   const plateStr = r.plates.map(p=>`${p.count}&times;${p.kg}kg`).join(' + ');
-  out.innerHTML = `<div style="font-size:15px;font-weight:700;margin-bottom:2px">${plateStr} <span style="font-weight:400;color:var(--text-dim);font-size:12px">per side</span></div>` +
-    (r.achievable ? '' : `<div style="font-size:11.5px;color:var(--warn)">Closest with these plates: ${(target - r.remainder*2).toFixed(1)}kg (off by ${(r.remainder*2).toFixed(2)}kg) — smallest plate assumed is 0.5kg</div>`);
+  out.innerHTML = `<div style="font-size:var(--fs-ui);font-weight:700;margin-bottom:2px">${plateStr} <span style="font-weight:400;color:var(--text-dim);font-size:var(--fs-body)">per side</span></div>` +
+    (r.achievable ? '' : `<div style="font-size:var(--fs-caption);color:var(--warn)">Closest with these plates: ${(target - r.remainder*2).toFixed(1)}kg (off by ${(r.remainder*2).toFixed(2)}kg) — smallest plate assumed is 0.5kg</div>`);
 }
+// Rendered as a plain function rather than inline in the template so the signed-in / signed-out /
+// not-configured states stay readable and separable.
+function cloudCardHtml(){
+  const line = '<div style="font-size:var(--fs-caption);color:' +
+    (cloudState.status==='error' ? 'var(--danger)' : 'var(--text-dim)') +
+    ';margin-bottom:10px">' + esc(cloudStatusLine()) + '</div>';
+
+  if(!cloudConfigured()){
+    return line + '<div style="font-size:var(--fs-caption);color:var(--text-faint)">' +
+      'Set SUPABASE_URL and SUPABASE_ANON_KEY in the code, then reload. ' +
+      'Until then everything works exactly as before, stored on this device only.</div>';
+  }
+  if(!getSession()){
+    return line +
+      '<div class="field"><label>Email</label><input id="cloud-email" type="email" autocomplete="username" inputmode="email"></div>' +
+      '<div class="field"><label>Password</label><input id="cloud-pw" type="password" autocomplete="current-password"></div>' +
+      '<div class="toolbar"><button onclick="doCloudSignIn()">Sign in</button></div>';
+  }
+  const sess = getSession();
+  const who = (sess && sess.user && sess.user.email) ? sess.user.email : 'signed in';
+  return line +
+    '<div style="font-size:var(--fs-caption);color:var(--text-faint);margin-bottom:10px">' + esc(who) + '</div>' +
+    '<div class="toolbar"><button onclick="cloudSyncNow(false)">Sync now</button></div>' +
+    '<div class="toolbar" style="margin-top:8px"><button onclick="cloudSignOut()">Sign out</button></div>';
+}
+
 function renderReference(){
   const panel = document.getElementById('panel-reference');
   panel.innerHTML = `<h2>Plan Reference</h2>
   <div class="note">Add this page to your Home Screen (Safari share icon &rarr; "Add to Home Screen") so it opens full-screen like an app.</div>
-  <h3 style="font-size:14px;margin:0 0 8px">App updates</h3>
+  <h3 style="font-size:var(--fs-ui);margin:0 0 8px">Cloud sync</h3>
+  <div class="card">${cloudCardHtml()}</div>
+
+  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">App updates</h3>
   <div class="card">
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">This is a home-screen app with no browser bar to pull-to-refresh — after Simar pushes a code change, tap below to force-fetch the latest version. Safe any time: it only clears the app's cached files, never your logged data.</div>
+    <div style="font-size:var(--fs-body);color:var(--text-dim);margin-bottom:10px">This is a home-screen app with no browser bar to pull-to-refresh — after Simar pushes a code change, tap below to force-fetch the latest version. Safe any time: it only clears the app's cached files, never your logged data.</div>
     <div class="toolbar"><button onclick="forceRefresh()">Refresh app (get latest version)</button></div>
+    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:8px">
+      Running build: <strong style="color:var(--text-dim)">${esc(APP_BUILD)}</strong><br>
+      If this doesn't match the version you just uploaded, the phone is still on the old copy \u2014 tap Refresh above.
+    </div>
   </div>
-  <h3 style="font-size:14px;margin:18px 0 8px">Daily mobility routine</h3>
+  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Daily mobility routine</h3>
   <div class="card"><ol class="mob-ol">${MOBILITY_ROUTINE.map(([ex,reps,link])=>`<li><b>${esc(ex)}</b> — ${esc(reps)} &middot; <a class="demo" href="${link}" target="_blank" rel="noopener">Watch</a></li>`).join('')}</ol></div>
-  <h3 style="font-size:14px;margin:18px 0 8px">Plate calculator</h3>
+  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Plate calculator</h3>
   <div class="card">
-    <div class="field"><label>Bar weight (kg)</label><input type="number" step="0.5" value="${DATA.settings.barKg??20}" onchange="setBarKg(this.value)"></div>
+    <div class="field"><label>Bar weight (kg)</label><input type="number" step="0.5" value="${esc(DATA.settings.barKg??20)}" onchange="setBarKg(this.value)"></div>
     <div class="field"><label>Target weight (kg)</label><input type="number" step="0.5" id="plate-target" oninput="onPlateCalcInput()" placeholder="e.g. 60"></div>
     <div id="plate-result"></div>
-    <div style="font-size:11px;color:var(--text-faint);margin-top:6px">Assumes a standard plate set (25/20/15/10/5/2.5/1.25/0.5kg). Doesn't know your actual gym or home plates — treat the breakdown as a starting guess, not gospel.</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:6px">Assumes a standard plate set (25/20/15/10/5/2.5/1.25/0.5kg). Doesn't know your actual gym or home plates — treat the breakdown as a starting guess, not gospel.</div>
   </div>
-  <h3 style="font-size:14px;margin:18px 0 8px">Supplement stock</h3>
+  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Supplement stock</h3>
   <div class="card">
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Pill count for capsule/tablet/softgel supplements only — protein, creatine, the Vit C dose and the collagen peptide are powders/scoops, not tracked here. Assumes a fresh ${PILL_BOTTLE_SIZE}-count bottle; tap Restock when you open a new one.</div>
+    <div style="font-size:var(--fs-body);color:var(--text-dim);margin-bottom:10px">Pill count for capsule/tablet/softgel supplements only — protein, creatine, the Vit C dose and the collagen peptide are powders/scoops, not tracked here. Assumes a fresh ${PILL_BOTTLE_SIZE}-count bottle; tap Restock when you open a new one.</div>
     ${PILL_STOCK_ITEMS.map(item=>{
       const remaining = remainingStock(item.id);
       const low = remaining <= 10;
       return `<div class="exrow">
         <div class="exname">${esc(item.label)}</div>
         <div class="extarget" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-          <span style="font-size:15px;font-weight:700;color:${low?'var(--warn)':'var(--text)'}">${remaining} left</span>
-          <button type="button" onclick="restockItem('${item.id}')" style="width:auto;padding:7px 14px;font-size:12px;font-weight:700;font-family:inherit;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm)">Restock (${PILL_BOTTLE_SIZE})</button>
+          <span style="font-size:var(--fs-ui);font-weight:700;color:${low?'var(--warn)':'var(--text)'}">${remaining} left</span>
+          <button type="button" onclick="restockItem('${item.id}')" style="width:auto;padding:7px 14px;font-size:var(--fs-body);font-weight:700;font-family:inherit;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm)">Restock (${PILL_BOTTLE_SIZE})</button>
         </div>
       </div>`;
     }).join('')}
   </div>
-  <h3 style="font-size:14px;margin:18px 0 8px">Data</h3>
+  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Data</h3>
   <div class="toolbar">
     <button onclick="exportData()">Export backup</button>
     <button class="secondary" onclick="document.getElementById('import-file').click()">Import backup</button>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
   </div>
-  <p style="font-size:11.5px;color:var(--text-dim)">This device is your single source of truth — everything you log lives only in
+  <p style="font-size:var(--fs-caption);color:var(--text-dim)">This device is your single source of truth — everything you log lives only in
   this browser's storage, nowhere else. "Export backup" opens your device's share sheet: choose "Save to Files" and pick iCloud
   Drive (not just "On My iPhone") so the backup survives a lost or reset phone, not just a full one. You'll get a reminder banner
   on the Today tab if it's been a while since your last backup.</p>
@@ -2440,6 +2749,13 @@ function clearAll(){ DATA={w1:{},w2:{},cardio:{},mobility:{},body:{},injury:{},s
 /* ================= INIT ================= */
 renderToday();
 renderReference();
+// Initial sync, fired after the app has already rendered from localStorage. Deliberately NOT awaited
+// anywhere in the boot path: the app must open and be usable with no network, exactly as before, and
+// the cloud is allowed to catch up a moment later or not at all.
+if(cloudConfigured() && getSession()){
+  setTimeout(function(){ cloudSyncNow(true); }, 800);
+}
+
 // Offline fallback so the Home Screen icon still opens with no signal (e.g. at a field/gym). sw.js is a
 // separate file — this registration is silently a no-op (caught, ignored) until sw.js is uploaded
 // alongside this file, so it's safe to ship before that file exists on the server.
