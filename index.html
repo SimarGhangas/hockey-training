@@ -299,7 +299,7 @@ table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:va
 /* ================= DATA MODEL — this is the single source of truth (no separate desktop app anymore).
  * Open this same file in a desktop browser to review; the "skip" map tracks rest/injury/illness/busy days
  * separately from normal completion so adherence stats don't get dragged down by legitimate rest. ================= */
-const START_DATE = new Date(2026,8,19); // Saturday 19 Sep 2026 — Day 1, moved forward one day from 18 Sep at Simar's request (19 Sep 2026). Same reasoning as every prior move: week/dayIndex keys are DERIVED from this date, so shifting it reinterprets every existing entry under a new week/day number rather than leaving it alone — hence the v7 wipe below. Program structure (25 weeks, deload at 13, Cycle 2 at 14-25) is unchanged; this only slides the calendar anchor. Note Day 1 is a SATURDAY: dayAbbrFor() derives weekday labels from START_DATE.getDay(), so every label follows automatically with no other edit — that is exactly the regression the 19 Sep day-label fix was built to prevent.
+const START_DATE = new Date(2026,8,21); // Monday 21 Sep 2026 — Day 1. Moved from Sat 19 Sep at Simar's request so the program week runs Mon-Sun. Unlike every previous START_DATE move this does NOT wipe: he explicitly asked to keep the 19-20 Sep entries so he can keep testing over the weekend. See the v8 block in migrateData() for what that trades away. Day 1 being a Monday needs no label changes — dayAbbrFor() derives weekday names from START_DATE.getDay().
 // 12 (Cycle 1) + 1 (Deload, week 13) + 12 (Cycle 2, weeks 14-25) — approved 14 Sep 2026. See DELOAD_WEEK
 // and weekBlock() below for how Cycle 2 mirrors Cycle 1's block structure.
 const WEEKS = 25;
@@ -324,7 +324,7 @@ const FONT_MICRO   = '10px Barlow';    // --fs-micro: gridline values, "no data"
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-09-19 15:30';
+const APP_BUILD = '2026-09-19 15:51';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -588,7 +588,7 @@ const STORE_KEY = "hockey_tracker_v3";
 // NEVER bump STORE_KEY to migrate the schema — that orphans existing users' data under the old key
 // (silently invisible, not technically deleted, but indistinguishable from data loss to the user).
 // Instead bump SCHEMA_VERSION and add a migration step in migrateData() below.
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 let DATA = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
 function applyDefaults(d){
   d.w1 = d.w1 || {}; d.w2 = d.w2 || {}; d.cardio = d.cardio || {};
@@ -702,6 +702,25 @@ function migrateData(){
     DATA.readiness = {}; DATA.supplements = {}; DATA.pillStock = {};
     DATA.settings = {};
     if(heightCm) DATA.settings.heightCm = heightCm;
+  }
+  if(v < 8){
+    // v8: START_DATE moved Sat 19 Sep -> Mon 21 Sep 2026 so the program week runs Mon-Sun.
+    //
+    // THE FIRST START_DATE MOVE THAT DOES NOT WIPE, and the reason is worth stating plainly.
+    // Every previous move (v2/v5/v6/v7) wiped because week/dayIndex keys are DERIVED from START_DATE,
+    // so sliding the anchor silently re-points existing entries at different calendar days. That is
+    // still true here — entries keep their {week}_{dayIndex} numbers, so anything logged on Sat 19 Sep
+    // (week 1, day 0) now reads as Mon 21 Sep instead. The difference is that Simar asked for exactly
+    // this, knowing those entries are throwaway test data he wants to keep using over the weekend.
+    // An informed re-point is not the same thing as a silent corruption, so there is nothing to wipe.
+    //
+    // Two consequences, deliberately accepted rather than worked around:
+    //   1. Sat 19 / Sun 20 Sep now fall BEFORE Day 1. currentDate clamps to MIN_DATE, so opening the
+    //      app this weekend shows Mon 21 Sep (correctly without the "· today" marker) — testable, just
+    //      not navigable to the actual weekend dates.
+    //   2. Because nothing is wiped, nothing destructive syncs to Supabase. That mattered: a wipe here
+    //      would have overwritten the cloud row too, and the local archive is local-only.
+    // If the test data ever becomes noise, Settings > Data > Clear all data removes it deliberately.
   }
   DATA.schemaVersion = SCHEMA_VERSION;
 }
