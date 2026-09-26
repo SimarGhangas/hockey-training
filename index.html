@@ -100,7 +100,7 @@ header .brand{display:flex;align-items:center;gap:var(--sp-3);}
    The mark's own red dot is Dot Red and never recolours — it is part of the logo, not an accent. */
 header .logo{width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 header h1{margin:0;font-size:var(--fs-head);font-weight:800;letter-spacing:-0.01em;}
-header .sub{font-size:var(--fs-caption);color:var(--text-faint);margin-top:var(--sp-1);}
+header .sub{font-size:var(--fs-caption);color:var(--text-dim);margin-top:var(--sp-1);}
 main{padding:var(--sp-4) var(--sp-4) var(--sp-6);max-width:600px;margin:0 auto;}
 .panel{display:none;}
 .panel.active{display:block;}
@@ -265,7 +265,7 @@ body.in-workout nav.bottomnav{display:none;}
 .setrow{border-top:1px dashed var(--border);padding-top:var(--sp-3);margin-top:var(--sp-3);}
 .setrow:first-child{border-top:none;padding-top:0;margin-top:0;}
 .setrow .setno{font-size:var(--fs-body);font-weight:700;color:var(--text-dim);display:flex;justify-content:space-between;margin-bottom:var(--sp-2);}
-.setrow .setno .settarget{font-weight:500;color:var(--text-faint);text-transform:none;}
+.setrow .setno .settarget{font-weight:400;color:var(--text-dim);text-transform:none;}
 .supitem{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-2) 0;border-top:1px solid var(--border);}
 .supitem:first-of-type{border-top:none;padding-top:0;}
 .supitem-txt{font-size:var(--fs-body);color:var(--text-dim);flex:1;}
@@ -273,7 +273,7 @@ body.in-workout nav.bottomnav{display:none;}
 .supitem .pill{padding:var(--sp-2) var(--sp-1);font-size:var(--fs-caption);}
 .heatmap{display:flex;flex-direction:column;gap:var(--sp-1);}
 .heatmap-row{display:flex;align-items:center;gap:var(--sp-1);}
-.heatmap-wk{width:26px;font-size:var(--fs-micro);color:var(--text-faint);flex-shrink:0;}
+.heatmap-wk{width:26px;font-size:var(--fs-micro);color:var(--text-dim);flex-shrink:0;}
 .heatmap-cell{flex:1;aspect-ratio:1;border-radius:0;min-width:0;border:1px solid var(--border);}
 .rest-note{font-size:var(--fs-body);color:var(--text-dim);text-align:center;padding:var(--sp-4) 0;}
 .skip-banner{display:flex;align-items:center;justify-content:space-between;background:var(--warn-dim);border:1px solid var(--warn);
@@ -286,10 +286,10 @@ body.in-workout nav.bottomnav{display:none;}
 .switch.on .knob{background:var(--warn);transform:translateX(20px);}
 nav.bottomnav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);
   display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:20;}
-nav.bottomnav button{flex:1;background:none;border:none;padding:var(--sp-3) var(--sp-1) var(--sp-2);font-size:var(--fs-micro);color:var(--text-faint);
-  font-family:inherit;font-weight:600;position:relative;}
+nav.bottomnav button{flex:1;background:none;border:none;padding:var(--sp-3) var(--sp-1) var(--sp-2);font-size:var(--fs-micro);color:var(--text-dim);
+  font-family:inherit;font-weight:500;position:relative;}
 nav.bottomnav button .ic{display:block;font-size:var(--fs-head);margin-bottom:var(--sp-1);}
-nav.bottomnav button.active{color:var(--accent-text);}
+nav.bottomnav button.active{color:var(--accent-text);font-weight:600;}
 /* The product accent's "one point": an 8px Teal circle marks the active nav item — where you are.
    26 Sep 2026: this was Dot Red until the product layer landed. Under it, Dot Red belongs to SG Sports
    & Media alone and every app carries its own accent instead, so an app using red here would now be
@@ -429,12 +429,29 @@ const WEEKS = 25;
 // before the 14 Sep 2026 restyle, when hardcoded dark-theme hex survived a var()-only sweep.
 const FONT_CAPTION = '11.5px Barlow';  // --fs-caption: chart axis labels
 const FONT_MICRO   = '10px Barlow';    // --fs-micro: gridline values, "no data" placeholder
+
+/* Canvas chart colours, as named constants.
+   <canvas> fillStyle/strokeStyle cannot read CSS custom properties, so these can NEVER be var()
+   tokens — which means a `var(--sg-*)` sweep is STRUCTURALLY BLIND to them. That blindness has
+   already cost this project twice: dark-theme chart colours survived the 14 Sep brand restyle
+   untouched (found only by grepping raw hex), and raw ctx.font sizes survived the type-scale
+   consolidation (fixed by the two constants above). Naming them is the whole defence, and the rule
+   is: no hex literal at a call site.
+   SG_CHART is the brand's fixed categorical order and is never shuffled. Note that indices 1 and 2
+   are each used by two charts — legitimate here because every chart carries a SINGLE series, so no
+   two colours ever compete inside one chart, but it does mean the sequence is not walked. Revisit
+   if a chart ever gains a second series. */
+const SG_CHART = ['#1F5BD0','#1BAF7A','#4A3AA7','#EDA100','#E87BA4']; // Blue, Aqua, Violet, Amber, Pink
+const SG_CHART_CONTEXT = { axis:'#8995A9', grid:'#D5DBE5' };          // Muted, Line
+// A highlighted mark uses the PRODUCT accent, never Dot Red — red belongs to SG Sports & Media now.
+// Unused so far: no chart marks its finding, so the accent's "one figure that matters" role is free.
+const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3AA7', wire:'#1F5BD0' };
 // Build stamp, shown in Reference > App updates. Update this on EVERY change to the file.
 // Why it exists: there was no way to tell which version was actually live on the phone, and that
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-09-26 21:19';
+const APP_BUILD = '2026-09-26 21:39';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -1996,7 +2013,7 @@ function renderToday(){
       </div>`;
     }).join('')}
     <div class="skip-banner" style="background:var(--surface2);border-color:var(--border);color:var(--text-dim);font-weight:400;font-size:var(--fs-caption);display:block">Daily protein target (${esc(proteinTgt.label.toLowerCase())}): <b>${esc(proteinTgt.range)}</b> at 109kg. Your 2 daily shakes cover ~42g regardless of day type — the rest needs to come from food across meals.</div>
-    <div style="font-size:var(--fs-micro);color:var(--text-faint);margin-top:var(--sp-3)">Phone reminders come from your Calendar/Shortcuts, not this app — this is just your log.</div>
+    <div style="font-size:var(--fs-micro);color:var(--text-dim);margin-top:var(--sp-3)">Phone reminders come from your Calendar/Shortcuts, not this app — this is just your log.</div>
   </div></details>`;
 
   // Weekly bodyweight check-in (Monday only)
@@ -2720,12 +2737,12 @@ function testDelta(field, higherIsBetter, cycle){
 function testFieldRow(label, field, unit, protocol){
   const c1 = TEST_CHECKPOINTS[1], c2 = TEST_CHECKPOINTS[2];
   return `<div class="field"><label>${esc(label)} (${unit})</label>
-    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin:0 0 var(--sp-2)">${esc(protocol)}</div>
-    <div style="font-size:var(--fs-micro);color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:var(--sp-1)">Cycle 1</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin:0 0 var(--sp-2)">${esc(protocol)}</div>
+    <div style="font-size:var(--fs-micro);color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:var(--sp-1)">Cycle 1</div>
     <div class="row3">
       ${c1.map((w,i)=>`<input type="number" step="0.1" placeholder="Wk${i===0?1:i===1?6:12}" data-k="tests" data-row="${w}" data-f="${field}" value="${esc((DATA.tests[w]&&DATA.tests[w][field]!==undefined)?DATA.tests[w][field]:'')}">`).join('')}
     </div>
-    <div style="font-size:var(--fs-micro);color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin:var(--sp-2) 0 var(--sp-1)">Cycle 2</div>
+    <div style="font-size:var(--fs-micro);color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin:var(--sp-2) 0 var(--sp-1)">Cycle 2</div>
     <div class="row3">
       ${c2.map((w,i)=>`<input type="number" step="0.1" placeholder="Wk${i===0?1:i===1?6:12}" data-k="tests" data-row="${w}" data-f="${field}" value="${esc((DATA.tests[w]&&DATA.tests[w][field]!==undefined)?DATA.tests[w][field]:'')}">`).join('')}
     </div></div>`;
@@ -2754,7 +2771,7 @@ function renderStrengthChart(key,slot){
   if(labelEl) labelEl.textContent = timeBased
     ? "Weight logged (kg) — timed hold, 1RM estimate doesn't apply"
     : "Estimated 1RM (kg) — Epley formula, using logged weight + that week's prescribed reps";
-  drawLineChart('strength-chart', weeks, values, '#4A3AA7');
+  drawLineChart('strength-chart', weeks, values, SG_CHART[2]);
 }
 
 function renderDashboard(){
@@ -2816,7 +2833,7 @@ function renderDashboard(){
     ${bar('Strength - Workout 2', w2.done, w2.total)}
     ${bar('Cardio', cardio.done, cardio.total)}
     ${bar('Mobility', mobDone, mobTotal)}
-    <div style="font-size:var(--fs-caption);color:var(--text-faint)">${skippedCount} session${skippedCount===1?'':'s'} marked as skipped (${healthSkips} injury/illness, ${restSkips} rest/busy) — excluded from these totals.</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-dim)">${skippedCount} session${skippedCount===1?'':'s'} marked as skipped (${healthSkips} injury/illness, ${restSkips} rest/busy) — excluded from these totals.</div>
   </div>
   <div class="card">
     <h3>Training Streak <span class="tag">${currentStreak()} day${currentStreak()===1?'':'s'}</span></h3>
@@ -2827,7 +2844,7 @@ function renderDashboard(){
     <h3>Body Mass Index</h3>
     ${fieldHtml('Height (cm) — enter once', `<input type="number" step="0.1" value="${esc(DATA.settings.heightCm??'')}" onchange="setHeight(this.value)">`)}
     ${bmi ? `<div class="value" style="margin:4px 0">${bmi.bmi.toFixed(1)} <span style="font-size:var(--fs-body);color:var(--text-dim);font-weight:600">— ${bmi.category}</span></div>
-      <div style="font-size:var(--fs-caption);color:var(--text-faint)">Calculated from your most recent weekly weigh-in. Standard BMI bands don't distinguish muscle from fat — take "Overweight" with a grain of salt if it's driven by strength gains, not body fat.</div>`
+      <div style="font-size:var(--fs-caption);color:var(--text-dim)">Calculated from your most recent weekly weigh-in. Standard BMI bands don't distinguish muscle from fat — take "Overweight" with a grain of salt if it's driven by strength gains, not body fat.</div>`
       : `<div class="note" style="margin:8px 0 0">Enter your height above (and at least one weekly bodyweight check-in) to calculate BMI.</div>`}
   </div>
   <div class="card">
@@ -2883,11 +2900,11 @@ function renderDashboard(){
   const weeks = Array.from({length:12},(_,i)=>i+1);
   // Chart line colours follow the brand's fixed categorical order (never Dot Red — that's reserved for
   // a single highlighted finding, and these are plain trend lines with no one point being called out).
-  drawLineChart('bw-chart', weeks, weeks.map(w=>{ const r=DATA.body[String(w)]; return r&&r.weight!==undefined&&r.weight!=='' ? parseFloat(r.weight):null; }), '#1F5BD0');
-  drawLineChart('dist-chart', weeks, weeks.map(w=>weeklyCardioDistance(w).total), '#1BAF7A');
-  drawLineChart('rhr-chart', weeks, weeks.map(w=>{ const r=DATA.body[String(w)]; return r&&r.rhr!==undefined&&r.rhr!=='' ? parseFloat(r.rhr):null; }), '#4A3AA7');
-  drawLineChart('readiness-chart', weeks, weeks.map(weeklyReadinessAvg), '#1BAF7A');
-  drawLineChart('load-chart', weeks, weeks.map(weeklyTrainingLoad), '#EDA100');
+  drawLineChart('bw-chart', weeks, weeks.map(w=>{ const r=DATA.body[String(w)]; return r&&r.weight!==undefined&&r.weight!=='' ? parseFloat(r.weight):null; }), SG_CHART[0]);
+  drawLineChart('dist-chart', weeks, weeks.map(w=>weeklyCardioDistance(w).total), SG_CHART[1]);
+  drawLineChart('rhr-chart', weeks, weeks.map(w=>{ const r=DATA.body[String(w)]; return r&&r.rhr!==undefined&&r.rhr!=='' ? parseFloat(r.rhr):null; }), SG_CHART[2]);
+  drawLineChart('readiness-chart', weeks, weeks.map(weeklyReadinessAvg), SG_CHART[1]);
+  drawLineChart('load-chart', weeks, weeks.map(weeklyTrainingLoad), SG_CHART[3]);
   renderStrengthChart(selectedStrengthEx.key, selectedStrengthEx.slot);
   // BUG FIX: the Fitness Tests inputs (data-k="tests") rely on the same data-k/row/f + bindField wiring
   // as every other field in the app, but this call was missing — meaning those four benchmark fields
@@ -2914,7 +2931,7 @@ function drawLineChart(canvasId, weeks, values, color){
 
   const nums = values.filter(v=>v!=null&&!isNaN(v)&&v!==0);
   if(nums.length===0){
-    ctx.fillStyle='#8995A9'; ctx.font=FONT_CAPTION; ctx.textAlign='center';
+    ctx.fillStyle=SG_CHART_CONTEXT.axis; ctx.font=FONT_CAPTION; ctx.textAlign='center';
     ctx.fillText('No data logged yet', w/2, h/2+4);
     ctx.textAlign='left';
     return;
@@ -2927,7 +2944,7 @@ function drawLineChart(canvasId, weeks, values, color){
   // Pick label precision from the data's own scale so small values (e.g. sleep hours) don't all round to
   // the same integer — that was producing duplicate "1, 1, 0" axis labels when nothing had been logged yet.
   const decimals = maxV < 3 ? 1 : maxV < 15 ? 1 : 0;
-  ctx.strokeStyle='#D5DBE5'; ctx.lineWidth=1; ctx.font=FONT_MICRO; ctx.fillStyle='#8995A9';
+  ctx.strokeStyle=SG_CHART_CONTEXT.grid; ctx.lineWidth=1; ctx.font=FONT_MICRO; ctx.fillStyle=SG_CHART_CONTEXT.axis;
   for(let i=0;i<=2;i++){ const y=padT+plotH-(plotH*i/2); ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke(); ctx.fillText((maxV*i/2).toFixed(decimals),2,y+3); }
   ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath(); let started=false;
   values.forEach((v,i)=>{ if(v==null||isNaN(v)) return; const x=padL+plotW*(i/(weeks.length-1)); const y=padT+plotH-(plotH*(v/(maxV||1))); if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y); });
@@ -2936,7 +2953,7 @@ function drawLineChart(canvasId, weeks, values, color){
   values.forEach((v,i)=>{ if(v==null||isNaN(v)) return; const x=padL+plotW*(i/(weeks.length-1)); const y=padT+plotH-(plotH*(v/(maxV||1))); ctx.beginPath(); ctx.arc(x,y,2,0,7); ctx.fill(); });
   // X-axis: always anchor the first and last week so the chart visibly spans the full 12-week program,
   // plus a couple of markers in between.
-  ctx.fillStyle='#8995A9'; ctx.font=FONT_MICRO;
+  ctx.fillStyle=SG_CHART_CONTEXT.axis; ctx.font=FONT_MICRO;
   const lastIdx = weeks.length-1;
   weeks.forEach((wk,i)=>{
     if(i!==0 && i!==lastIdx && wk%3!==1) return;
@@ -3041,7 +3058,7 @@ function cloudCardHtml(){
     ';margin-bottom:var(--sp-3)">' + esc(cloudStatusLine()) + '</div>';
 
   if(!cloudConfigured()){
-    return line + '<div style="font-size:var(--fs-caption);color:var(--text-faint)">' +
+    return line + '<div style="font-size:var(--fs-caption);color:var(--text-dim)">' +
       'Set SUPABASE_URL and SUPABASE_ANON_KEY in the code, then reload. ' +
       'Until then everything works exactly as before, stored on this device only.</div>';
   }
@@ -3054,7 +3071,7 @@ function cloudCardHtml(){
   const sess = getSession();
   const who = (sess && sess.user && sess.user.email) ? sess.user.email : 'signed in';
   return line +
-    '<div style="font-size:var(--fs-caption);color:var(--text-faint);margin-bottom:var(--sp-3)">' + esc(who) + '</div>' +
+    '<div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:var(--sp-3)">' + esc(who) + '</div>' +
     '<div class="toolbar"><button onclick="cloudSyncNow(false)">Sync now</button></div>' +
     '<div class="toolbar" style="margin-top:8px"><button onclick="cloudSignOut()">Sign out</button></div>';
 }
@@ -3095,7 +3112,7 @@ function renderPlan(){
     <div class="field"><label>Bar weight (kg)</label><input type="number" step="0.5" value="${esc(DATA.settings.barKg??20)}" onchange="setBarKg(this.value)"></div>
     <div class="field"><label>Target weight (kg)</label><input type="number" step="0.5" id="plate-target" oninput="onPlateCalcInput()" placeholder="e.g. 60"></div>
     <div id="plate-result"></div>
-    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:var(--sp-2)">Assumes a standard plate set (25/20/15/10/5/2.5/1.25/0.5kg). Doesn't know your actual gym or home plates — treat the breakdown as a starting guess, not gospel.</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-top:var(--sp-2)">Assumes a standard plate set (25/20/15/10/5/2.5/1.25/0.5kg). Doesn't know your actual gym or home plates — treat the breakdown as a starting guess, not gospel.</div>
   </div>
   <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Supplement stock</h3>
   <div class="card">
@@ -3113,7 +3130,7 @@ function renderPlan(){
     }).join('')}
   </div>
   <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Log a niggle or injury</h3>
-  <p style="font-size:var(--fs-caption);color:var(--text-faint);margin:0 0 8px">Logged against today, ${esc(fmtDate(startOfDay(new Date())))}.</p>
+  <p style="font-size:var(--fs-caption);color:var(--text-dim);margin:0 0 8px">Logged against today, ${esc(fmtDate(startOfDay(new Date())))}.</p>
   ${injSection}`;
   wireCard(panel);
 }
@@ -3129,7 +3146,7 @@ function renderSettings(){
   <div class="card">
     <div style="font-size:var(--fs-body);color:var(--text-dim);margin-bottom:var(--sp-3)">This is a home-screen app with no browser bar to pull-to-refresh — after Simar pushes a code change, tap below to force-fetch the latest version. Safe any time: it only clears the app's cached files, never your logged data.</div>
     <div class="toolbar"><button onclick="forceRefresh()">Refresh app (get latest version)</button></div>
-    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:8px">
+    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-top:8px">
       Running build: <strong style="color:var(--text-dim)">${esc(APP_BUILD)}</strong><br>
       If this doesn't match the version you just uploaded, the phone is still on the old copy \u2014 tap Refresh above.
     </div>
