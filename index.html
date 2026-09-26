@@ -51,6 +51,16 @@
   --fs-ui:16px;         /* form inputs (see above), card headers, section h3s, emphasised values */
   --fs-head:18px;       /* h1, h2, bottom-nav icons */
   --fs-display:22px;    /* dashboard stat-card values */
+  /* Spacing. Four-point scale, straight from the brand (tokens/sg-tokens.css, --sg-space-1..9).
+   * Defined here for the same reason as the type scale above: before this, 101 of the app's
+   * padding/margin/gap declarations used 13 distinct off-scale values — 1,2,3,5,6,7,9,10,11,13,
+   * 14,18,30 — that no rule explained; 10px alone appeared 35 times and 6px 16 times. 29 of the
+   * 101 were inline style= attributes built in JS template strings, which is exactly where half
+   * the font-size sprawl hid from its first sweep, so the guard reads the whole file. Add a step
+   * only with a reason; never a one-off px value, which is how the sprawl started both times.
+   * tests.html suite 13 enforces this. */
+  --sp-1:4px;   --sp-2:8px;   --sp-3:12px;  --sp-4:16px;
+  --sp-5:24px;  --sp-6:32px;  --sp-7:48px;  --sp-8:64px;
   --bg:#FFFFFF; --surface:#FFFFFF; --surface2:#EBEEF3; --border:#D5DBE5;
   --text:#15233F; --text-dim:#4A5870; --text-faint:#8995A9;
   --accent:#15233F; --accent-dim:#E8EFFB; --accent-text:#15233F;
@@ -61,43 +71,50 @@
   --radius:0; --radius-sm:0;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+/* Form controls do NOT inherit typography from the page — browsers give them their own default,
+   which resolves to 13.3333px here: off the scale, and under the 16px iOS focus-zoom floor. This
+   base rule means a control can never silently fall back to it; every specific rule below carries
+   at least one class, so it still wins. Two real bugs came from this gap — a <select> outside
+   .field during Stage 1a, and the hidden import file input found by the whole-app sweep in
+   tests.html suite 8. Setting it once at the root is the fix; chasing them one at a time is not. */
+input,select,textarea{font-size:var(--fs-ui);font-family:inherit;}
 html,body{margin:0;padding:0;}
 body{font-family:'Barlow',-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);
   padding-bottom:calc(70px + env(safe-area-inset-bottom)); -webkit-font-smoothing:antialiased;}
-header{background:var(--bg);padding:calc(14px + env(safe-area-inset-top)) 18px 14px;position:sticky;top:0;z-index:20;
+header{background:var(--bg);padding:calc(var(--sp-4) + env(safe-area-inset-top)) var(--sp-4) var(--sp-4);position:sticky;top:0;z-index:20;
   border-bottom:1px solid var(--border);}
-header .brand{display:flex;align-items:center;gap:10px;}
+header .brand{display:flex;align-items:center;gap:var(--sp-3);}
 header .logo{width:32px;height:32px;border-radius:0;background:var(--accent);
   display:flex;align-items:center;justify-content:center;font-weight:800;font-size:var(--fs-ui);color:#fff;flex-shrink:0;}
 header h1{margin:0;font-size:var(--fs-head);font-weight:800;letter-spacing:-0.01em;}
-header .sub{font-size:var(--fs-caption);color:var(--text-faint);margin-top:1px;}
-main{padding:16px 16px 30px;max-width:600px;margin:0 auto;}
+header .sub{font-size:var(--fs-caption);color:var(--text-faint);margin-top:var(--sp-1);}
+main{padding:var(--sp-4) var(--sp-4) var(--sp-6);max-width:600px;margin:0 auto;}
 .panel{display:none;}
 .panel.active{display:block;}
 .daybar{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-radius:var(--radius);
-  padding:10px 10px;margin-bottom:14px;border:1px solid var(--border);}
+  padding:var(--sp-3);margin-bottom:var(--sp-3);border:1px solid var(--border);}
 .daybar button{background:var(--surface2);color:var(--text);border:1px solid var(--border);width:38px;height:38px;
   border-radius:var(--radius-sm);font-size:var(--fs-ui);font-weight:600;font-family:inherit;}
 .daybar button:disabled{opacity:0.3;}
 .daybar .center{text-align:center;flex:1;}
 .daybar .center .d{font-size:var(--fs-ui);font-weight:700;}
-.daybar .center .w{font-size:var(--fs-caption);color:var(--accent-text);font-weight:600;margin-top:1px;}
-.jumprow{display:flex;gap:5px;justify-content:center;margin-top:6px;}
-.jumprow select{border:1px solid var(--border);border-radius:0;padding:4px 6px;font-size:var(--fs-caption);font-family:inherit;
+.daybar .center .w{font-size:var(--fs-caption);color:var(--accent-text);font-weight:600;margin-top:var(--sp-1);}
+.jumprow{display:flex;gap:var(--sp-2);justify-content:center;margin-top:var(--sp-2);}
+.jumprow select{border:1px solid var(--border);border-radius:0;padding:var(--sp-1) var(--sp-2);font-size:var(--fs-caption);font-family:inherit;
   background:var(--surface2);color:var(--text-dim);color-scheme:light;}
-.card{background:var(--surface);border-radius:var(--radius);padding:16px;margin-bottom:14px;border:1px solid var(--border);}
-.card h3{margin:0 0 12px;font-size:var(--fs-ui);font-weight:700;display:flex;align-items:center;justify-content:space-between;color:var(--accent-text);
-  text-transform:uppercase;letter-spacing:.02em;}
-.card h3 .tag{font-size:var(--fs-micro);background:var(--surface2);color:var(--text-dim);padding:4px 9px;border-radius:20px;font-weight:600;
-  text-transform:uppercase;letter-spacing:.03em;}
+.card{background:var(--surface);border-radius:var(--radius);padding:var(--sp-4);margin-bottom:var(--sp-3);border:1px solid var(--border);}
+.card h3{margin:0 0 var(--sp-3);font-size:var(--fs-ui);font-weight:700;display:flex;align-items:center;
+  justify-content:space-between;color:var(--accent-text);}
+.card h3 .tag{font-size:var(--fs-micro);background:var(--surface2);color:var(--text-dim);padding:var(--sp-1) var(--sp-2);border-radius:20px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.08em;}
 /* Collapsible card pattern — every Today card except "This week" renders as <details class="card"> so it
    starts closed and the day's screen needs minimal scrolling to get an overview. The summary mirrors the
    old .card h3 styling (red, all-caps, tag pill on the right) so a collapsed card looks identical to the
    old always-open one, just closed by default. */
 details.card{padding:0;}
-details.card>summary{margin:0;padding:16px;font-size:var(--fs-ui);font-weight:700;display:flex;align-items:center;
-  justify-content:flex-start;color:var(--accent-text);text-transform:uppercase;letter-spacing:.02em;
-  cursor:pointer;list-style:none;gap:8px;}
+details.card>summary{margin:0;padding:var(--sp-4);font-size:var(--fs-ui);font-weight:700;display:flex;align-items:center;
+  justify-content:flex-start;color:var(--accent-text);
+  cursor:pointer;list-style:none;gap:var(--sp-2);}
 details.card>summary::-webkit-details-marker{display:none;}
 details.card>summary::after{content:'\25B8';color:var(--text-dim);font-size:var(--fs-body);flex-shrink:0;
   transition:transform .15s;text-transform:none;}
@@ -114,40 +131,77 @@ details.card[open]>summary::after{transform:rotate(90deg);}
    Net effect: every collapsed card's tag — DAILY, TRAINING DAY, WEEK 1, REST, etc. — was rendering as plain
    bold 14.5px uppercase text indistinguishable from the title, not as a status badge. Column position was
    correct; the visual treatment was not. Added the missing pill styling here and centered the text within
-   the fixed column (reads as an intentional fixed-width badge rather than off-center leftover space). */
+   the fixed column (reads as an intentional fixed-width badge rather than off-center leftover space).
+   26 Sep 2026: the column width is now MEASURED, not chosen. It must fit the longest tag the app can
+   actually render — the extra-activity type "Hockey Training" (15 chars), which appears on the
+   "+ Log something else" card — at this font size, weight and tracking, plus the horizontal padding.
+   At the old .03em that needed 103px against a 96px column, so it was silently ellipsising; at .08em it
+   needs 111px, hence 116px with a little headroom. If the tracking, the padding or the set of extra
+   activity types changes, RE-MEASURE: tests.html suite 7 fails loudly if any tag no longer fits. */
 details.card>summary .tag{font-size:var(--fs-micro);background:var(--surface2);color:var(--text-dim);font-weight:600;
-  padding:4px 6px;border-radius:20px;letter-spacing:.03em;box-sizing:border-box;
-  text-transform:uppercase;flex:0 0 96px;width:96px;text-align:center;
+  padding:var(--sp-1) var(--sp-2);border-radius:20px;letter-spacing:.08em;box-sizing:border-box;
+  text-transform:uppercase;flex:0 0 116px;width:116px;text-align:center;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 details.card>summary .sumtxt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-details.card>.card-body{padding:0 16px 16px;}
+details.card>.card-body{padding:0 var(--sp-4) var(--sp-4);}
 details.card>summary:hover{background:var(--surface2);border-radius:var(--radius);}
-.exrow{border-top:1px solid var(--border);padding-top:12px;margin-top:12px;}
+/* Card weight tiers (Stage 3). Today stacks three genuinely different kinds of content — the
+   session you opened the app to log, the daily ticks (Mobility/Readiness/Supplements) and an
+   escape hatch you touch rarely — and before this they rendered as six identical white boxes, so
+   the primary thing read exactly like a collapsed checklist row. No new colours or shapes: the
+   tiers are built from border weight, padding and the existing type scale.
+   Merging the three daily ticks into one card was considered and REJECTED — that is a structural
+   change and Stage 1 is closed; it would re-key openCards and break the Stage 1a assertion that
+   fixes Today's card order. A CSS modifier gets the same visual result with none of that risk.
+   Order is not load-bearing here: .card.quiet>summary carries two classes against
+   details.card>summary's one, so it wins on specificity wherever it sits (verified in a browser,
+   not worked out on paper). It lives here to keep the collapsible-card rules together. */
+.card.primary{border-top:var(--sp-1) solid var(--accent);}
+/* A TOP rule, not a left rule: a left rule would push this card's content out of line with every
+   other card unless the padding absorbed it, and the absorbing value (13px) is off the spacing
+   scale. The top edge costs no horizontal alignment. */
+.card.quiet{border-left:none;border-right:none;margin-bottom:0;}
+.card.quiet + .card.quiet{border-top:none;}
+/* Horizontal padding is deliberately KEPT at --sp-4 so a quiet card's text stays on the same x as
+   every other card's text. Dropping it to 0 would have read as a third alignment on a screen that
+   already has two (page margin 16px, card text 32px) — more visual noise, not less. */
+.card.quiet>summary{padding:var(--sp-3) var(--sp-4);font-size:var(--fs-body);}
+.card.quiet>.card-body{padding:0 var(--sp-4) var(--sp-3);}
+/* The run closes with the normal gap before whatever follows it. NOT :last-of-type — that matches
+   the last <details> in the panel, which on a check-in week is card-checkin rather than the last
+   quiet card, so the gap would land in the wrong place. Targeting the follower is exact; where the
+   run really is last, main's own padding-bottom provides the space. */
+.card.quiet + .card:not(.quiet){margin-top:var(--sp-3);}
+/* The one action the whole screen exists for should not be a content-width box tucked under the
+   header. .toolbar is a flex row, so a 100% basis makes the button own the row. */
+.toolbar.primary-action{margin-bottom:var(--sp-4);}
+.toolbar.primary-action button{flex:1 1 100%;padding:var(--sp-4);font-size:var(--fs-ui);}
+.exrow{border-top:1px solid var(--border);padding-top:var(--sp-3);margin-top:var(--sp-3);}
 .exrow:first-child{border-top:none;padding-top:0;margin-top:0;}
 .exrow .exname{font-size:var(--fs-body);font-weight:700;}
-.exrow .extarget{font-size:var(--fs-caption);color:var(--text-dim);margin:2px 0 8px;}
+.exrow .extarget{font-size:var(--fs-caption);color:var(--text-dim);margin:var(--sp-1) 0 var(--sp-2);}
 .exrow a.demo{font-size:var(--fs-caption);color:var(--link);text-decoration:none;font-weight:600;}
-.field{margin-bottom:10px;}
-.field label{display:block;font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
-.field input,.field select,.field textarea{width:100%;border:1px solid var(--text-faint);border-radius:0;padding:10px 11px;
+.field{margin-bottom:var(--sp-3);}
+.field label{display:block;font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:var(--sp-1);font-weight:600;text-transform:uppercase;letter-spacing:.08em;}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--text-faint);border-radius:0;padding:var(--sp-3);
   font-size:var(--fs-ui);font-family:inherit;background:var(--surface);color:var(--text);}
 .field select{color-scheme:light;}
 .field textarea{min-height:44px;resize:vertical;}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-.pill-group{display:flex;gap:8px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--sp-2);}
+.pill-group{display:flex;gap:var(--sp-2);}
 /* Explicit 9999px, not var(--radius-sm) (now 0 under the brand's square-corners rule) — brand's one named
    exception is "pills and status dots are the only round shapes," and these Yes/No/state toggles are exactly
    that: status pills, not general UI chrome. */
-.pill{flex:1;text-align:center;padding:10px;border-radius:9999px;border:1px solid var(--border);font-size:var(--fs-body);
+.pill{flex:1;text-align:center;padding:var(--sp-3);border-radius:9999px;border:1px solid var(--border);font-size:var(--fs-body);
   font-weight:700;background:var(--surface2);color:var(--text-dim);}
 .pill.y.active{background:var(--success-dim);color:var(--success);border-color:var(--success);}
 .pill.n.active{background:var(--danger-dim);color:var(--danger);border-color:var(--danger);}
 .pill.sel.active{background:var(--accent-dim);color:var(--accent-text);border-color:var(--accent);}
 .timer-btn{width:100%;background:var(--surface2);color:var(--accent-text);border:1px solid var(--border);
-  border-radius:var(--radius-sm);padding:9px;font-size:var(--fs-body);font-weight:700;font-family:inherit;margin:6px 0 10px;}
+  border-radius:var(--radius-sm);padding:var(--sp-3);font-size:var(--fs-body);font-weight:700;font-family:inherit;margin:var(--sp-2) 0 var(--sp-3);}
 .timer-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent-text);}
-.timer-row{display:flex;gap:6px;margin:6px 0 10px;}
+.timer-row{display:flex;gap:var(--sp-2);margin:var(--sp-2) 0 var(--sp-3);}
 .timer-row .timer-btn{margin:0;flex:2;}
 .timer-row .timer-pause{flex:1;}
 .timer-row .timer-reset{flex:1;background:var(--surface2);color:var(--text-dim);}
@@ -159,18 +213,18 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
 #workout-mode{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
 #workout-mode[hidden]{display:none;}
-.wm-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;
+.wm-head{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);
   border-bottom:1px solid var(--border);flex:0 0 auto;background:var(--surface);}
-.wm-title{font-size:var(--fs-ui);font-weight:800;text-transform:uppercase;color:var(--accent-text);}
-.wm-progress{font-size:var(--fs-caption);color:var(--text-dim);margin-top:2px;}
+.wm-title{font-size:var(--fs-ui);font-weight:800;color:var(--accent-text);}
+.wm-progress{font-size:var(--fs-caption);color:var(--text-dim);margin-top:var(--sp-1);}
 .wm-timer{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border);
-  padding:12px 16px;margin:12px -16px -24px;font-size:var(--fs-ui);font-weight:700;text-align:center;
+  padding:var(--sp-3) var(--sp-4);margin:var(--sp-3) calc(var(--sp-4) * -1) calc(var(--sp-5) * -1);font-size:var(--fs-ui);font-weight:700;text-align:center;
   color:var(--accent-text);}
 .wm-timer[hidden]{display:none;}
-.wm-body{flex:1 1 auto;overflow-y:auto;padding:12px 16px 24px;}
+.wm-body{flex:1 1 auto;overflow-y:auto;padding:var(--sp-3) var(--sp-4) var(--sp-5);}
 #workout-mode .excarousel{margin:0;}
 body.in-workout nav.bottomnav{display:none;}
-.excarousel{overflow:hidden;margin:-4px 0 10px;transition:height .25s ease;}
+.excarousel{overflow:hidden;margin:calc(var(--sp-1) * -1) 0 var(--sp-3);transition:height .25s ease;}
 /* align-items:flex-start (NOT the flex default of stretch) is load-bearing here: with the default stretch,
    every .excarousel-page's own box gets inflated to match the tallest sibling, which corrupts scrollHeight
    measurements taken in JS (resizeExCarousel below) — a short page would report the tall page's height
@@ -178,30 +232,30 @@ body.in-workout nav.bottomnav{display:none;}
    keeps each page at its real natural height so scrollHeight reads a true, page-specific value. */
 .excarousel-track{display:flex;align-items:flex-start;transition:transform .25s ease;touch-action:pan-y;}
 .excarousel-page{flex:0 0 100%;min-width:0;}
-.excarousel-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px;}
+.excarousel-nav{display:flex;align-items:center;justify-content:center;gap:var(--sp-3);margin-top:var(--sp-3);}
 .excarousel-btn{background:var(--surface2);color:var(--accent-text);border:1px solid var(--border);width:34px;height:34px;
   border-radius:50%;font-size:var(--fs-ui);font-weight:700;font-family:inherit;flex-shrink:0;}
 .excarousel-btn:disabled{opacity:0.25;}
-.excarousel-dots{display:flex;gap:6px;align-items:center;}
+.excarousel-dots{display:flex;gap:var(--sp-2);align-items:center;}
 .excarousel-dots .dot{width:7px;height:7px;border-radius:50%;background:var(--border);flex-shrink:0;}
 .excarousel-dots .dot.active{background:var(--accent);width:16px;border-radius:4px;}
-.setrow{border-top:1px dashed var(--border);padding-top:10px;margin-top:10px;}
+.setrow{border-top:1px dashed var(--border);padding-top:var(--sp-3);margin-top:var(--sp-3);}
 .setrow:first-child{border-top:none;padding-top:0;margin-top:0;}
-.setrow .setno{font-size:var(--fs-body);font-weight:700;color:var(--text-dim);display:flex;justify-content:space-between;margin-bottom:6px;}
+.setrow .setno{font-size:var(--fs-body);font-weight:700;color:var(--text-dim);display:flex;justify-content:space-between;margin-bottom:var(--sp-2);}
 .setrow .setno .settarget{font-weight:500;color:var(--text-faint);text-transform:none;}
-.supitem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--border);}
-.supitem:first-of-type{border-top:none;padding-top:2px;}
+.supitem{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-2) 0;border-top:1px solid var(--border);}
+.supitem:first-of-type{border-top:none;padding-top:0;}
 .supitem-txt{font-size:var(--fs-body);color:var(--text-dim);flex:1;}
 .supitem .pill-group{width:88px;flex-shrink:0;}
-.supitem .pill{padding:6px 4px;font-size:var(--fs-caption);}
-.heatmap{display:flex;flex-direction:column;gap:3px;}
-.heatmap-row{display:flex;align-items:center;gap:3px;}
+.supitem .pill{padding:var(--sp-2) var(--sp-1);font-size:var(--fs-caption);}
+.heatmap{display:flex;flex-direction:column;gap:var(--sp-1);}
+.heatmap-row{display:flex;align-items:center;gap:var(--sp-1);}
 .heatmap-wk{width:26px;font-size:var(--fs-micro);color:var(--text-faint);flex-shrink:0;}
 .heatmap-cell{flex:1;aspect-ratio:1;border-radius:0;min-width:0;border:1px solid var(--border);}
-.rest-note{font-size:var(--fs-body);color:var(--text-dim);text-align:center;padding:14px 0;}
+.rest-note{font-size:var(--fs-body);color:var(--text-dim);text-align:center;padding:var(--sp-4) 0;}
 .skip-banner{display:flex;align-items:center;justify-content:space-between;background:var(--warn-dim);border:1px solid var(--warn);
-  border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:var(--fs-body);color:var(--warn);font-weight:600;}
-.skip-toggle{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  border-radius:var(--radius-sm);padding:var(--sp-3);margin-bottom:var(--sp-3);font-size:var(--fs-body);color:var(--warn);font-weight:600;}
+.skip-toggle{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-2);}
 .skip-toggle .lbl{font-size:var(--fs-body);font-weight:700;}
 .switch{position:relative;width:46px;height:26px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;flex-shrink:0;}
 .switch.on{background:var(--warn-dim);border-color:var(--warn);}
@@ -209,64 +263,64 @@ body.in-workout nav.bottomnav{display:none;}
 .switch.on .knob{background:var(--warn);transform:translateX(20px);}
 nav.bottomnav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);
   display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:20;}
-nav.bottomnav button{flex:1;background:none;border:none;padding:10px 4px 8px;font-size:var(--fs-micro);color:var(--text-faint);
+nav.bottomnav button{flex:1;background:none;border:none;padding:var(--sp-3) var(--sp-1) var(--sp-2);font-size:var(--fs-micro);color:var(--text-faint);
   font-family:inherit;font-weight:600;position:relative;}
-nav.bottomnav button .ic{display:block;font-size:var(--fs-head);margin-bottom:3px;}
+nav.bottomnav button .ic{display:block;font-size:var(--fs-head);margin-bottom:var(--sp-1);}
 nav.bottomnav button.active{color:var(--accent-text);}
 /* The brand's "one red point": an 8px Dot Red circle marks the active nav item. This is the ONLY Dot Red
    pixel anywhere in the app — everywhere else red was replaced with navy/Data Blue during the brand restyle. */
 nav.bottomnav button.active::after{content:'';position:absolute;top:6px;left:50%;transform:translateX(-50%);
   width:8px;height:8px;border-radius:50%;background:var(--sg-dot);}
-.stat-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
-.stat-cards .card{margin-bottom:0;padding:13px;}
-.stat-cards .label{font-size:var(--fs-micro);color:var(--text-dim);text-transform:uppercase;font-weight:600;letter-spacing:.02em;}
-.stat-cards .value{font-size:var(--fs-display);font-weight:800;margin-top:3px;}
-.bar-row{margin-bottom:12px;font-size:var(--fs-body);}
-.bar-row .lbl{margin-bottom:4px;font-weight:600;}
+.stat-cards{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);margin-bottom:var(--sp-3);}
+.stat-cards .card{margin-bottom:0;padding:var(--sp-3);}
+.stat-cards .label{font-size:var(--fs-micro);color:var(--text-dim);text-transform:uppercase;font-weight:600;letter-spacing:.08em;}
+.stat-cards .value{font-size:var(--fs-display);font-weight:800;margin-top:var(--sp-1);}
+.bar-row{margin-bottom:var(--sp-3);font-size:var(--fs-body);}
+.bar-row .lbl{margin-bottom:var(--sp-1);font-weight:600;}
 .bar-track{background:var(--surface2);border-radius:0;height:10px;overflow:hidden;}
 .bar-fill{background:var(--link);height:100%;border-radius:0;}
-#hist-search{width:100%;font-family:inherit;font-size:var(--fs-ui);padding:10px 11px;
+#hist-search{width:100%;font-family:inherit;font-size:var(--fs-ui);padding:var(--sp-3);
   border:1px solid var(--text-faint);border-radius:0;background:var(--surface);color:var(--text);
-  margin-bottom:10px;}
-.chip-row{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;}
-.chip{flex-shrink:0;padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);
+  margin-bottom:var(--sp-3);}
+.chip-row{display:flex;gap:var(--sp-2);overflow-x:auto;margin-bottom:var(--sp-3);padding-bottom:var(--sp-1);}
+.chip{flex-shrink:0;padding:var(--sp-2) var(--sp-4);border-radius:20px;border:1px solid var(--border);background:var(--surface);
   font-size:var(--fs-body);font-weight:600;color:var(--text-dim);}
 .chip.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-.hist-week{margin-bottom:6px;}
-.hist-week summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 13px;
+.hist-week{margin-bottom:var(--sp-2);}
+.hist-week summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--sp-3);
   font-size:var(--fs-body);font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;}
 .hist-week summary::-webkit-details-marker{display:none;}
 .hist-week summary .cnt{color:var(--text-dim);font-weight:600;font-size:var(--fs-caption);}
-.exhist{border-top:1px dashed var(--border);margin-top:8px;padding-top:6px;}
-.exhist-row{display:flex;justify-content:space-between;gap:12px;font-size:var(--fs-caption);
-  color:var(--text-dim);padding:3px 0;}
+.exhist{border-top:1px dashed var(--border);margin-top:var(--sp-2);padding-top:var(--sp-2);}
+.exhist-row{display:flex;justify-content:space-between;gap:var(--sp-3);font-size:var(--fs-caption);
+  color:var(--text-dim);padding:var(--sp-1) 0;}
 .hist-day{font-size:var(--fs-caption);font-weight:700;color:var(--text-dim);text-transform:uppercase;
-  letter-spacing:.04em;padding:10px 13px 4px;background:var(--surface);
+  letter-spacing:.08em;padding:var(--sp-3) var(--sp-3) var(--sp-1);background:var(--surface);
   border-left:1px solid var(--border);border-right:1px solid var(--border);}
 .hist-day-group:last-child .hist-entry:last-child{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
-.hist-entry{background:var(--surface);border:1px solid var(--border);border-top:none;padding:10px 13px;font-size:var(--fs-body);}
+.hist-entry{background:var(--surface);border:1px solid var(--border);border-top:none;padding:var(--sp-3);font-size:var(--fs-body);}
 .hist-entry:last-child{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
-.hist-entry .hd{display:flex;justify-content:space-between;font-weight:700;margin-bottom:3px;}
+.hist-entry .hd{display:flex;justify-content:space-between;font-weight:700;margin-bottom:var(--sp-1);}
 .hist-entry .meta{color:var(--text-dim);}
-.pickerbar{display:flex;flex-wrap:wrap;justify-content:flex-end;margin:-4px 0 10px;}
-.pickerbar select{margin-top:8px;width:100%;}
+.pickerbar{display:flex;flex-wrap:wrap;justify-content:flex-end;margin:calc(var(--sp-1) * -1) 0 var(--sp-3);}
+.pickerbar select{margin-top:var(--sp-2);width:100%;}
 .pickerbar select,.card>select{font-size:var(--fs-ui);font-family:inherit;width:100%;
-  border:1px solid var(--text-faint);border-radius:0;background:var(--surface);color:var(--text);padding:10px 11px;}
+  border:1px solid var(--text-faint);border-radius:0;background:var(--surface);color:var(--text);padding:var(--sp-3);}
 .linkbtn{background:none;border:none;color:var(--link);font-family:inherit;
-  font-size:var(--fs-caption);text-decoration:underline;padding:4px 0;cursor:pointer;}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
-.toolbar button{background:var(--accent);color:#fff;border:none;padding:11px 16px;border-radius:var(--radius-sm);font-size:var(--fs-body);font-weight:700;font-family:inherit;}
+  font-size:var(--fs-caption);text-decoration:underline;padding:var(--sp-1) 0;cursor:pointer;}
+.toolbar{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-3);}
+.toolbar button{background:var(--accent);color:#fff;border:none;padding:var(--sp-3) var(--sp-4);border-radius:var(--radius-sm);font-size:var(--fs-body);font-weight:700;font-family:inherit;}
 .toolbar button.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
 .toolbar button.danger{background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);}
-.note{background:var(--accent-dim);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:11px 13px;
-  font-size:var(--fs-body);color:var(--accent-text);margin-bottom:14px;}
+.note{background:var(--accent-dim);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:var(--sp-3);
+  font-size:var(--fs-body);color:var(--accent-text);margin-bottom:var(--sp-3);}
 a.demo{color:var(--link);}
-h2{font-size:var(--fs-head);margin:0 0 12px;font-weight:800;color:var(--accent-text);}
-ol.mob-ol{margin:0;padding-left:18px;font-size:var(--fs-body);line-height:1.9;}
+h2{font-size:var(--fs-head);margin:0 0 var(--sp-3);font-weight:800;color:var(--accent-text);}
+ol.mob-ol{margin:0;padding-left:var(--sp-4);font-size:var(--fs-body);line-height:1.9;}
 table.ref-table{width:100%;border-collapse:collapse;font-size:var(--fs-body);background:var(--surface);border-radius:var(--radius-sm);
   overflow:hidden;border:1px solid var(--border);}
-table.ref-table th,table.ref-table td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;}
-table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:var(--fs-caption);text-transform:uppercase;font-weight:700;}
+table.ref-table th,table.ref-table td{border-bottom:1px solid var(--border);padding:var(--sp-2) var(--sp-3);text-align:left;}
+table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:var(--fs-caption);text-transform:uppercase;font-weight:700;letter-spacing:.08em;}
 </style>
 </head>
 <body>
@@ -309,7 +363,14 @@ table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:va
 <div id="workout-mode" hidden></div>
 
 <nav class="bottomnav">
-  <button data-tab="today" class="active"><span class="ic">&#9679;</span>Today</button>
+  <!-- Today's glyph is a DIAMOND, not a circle: the active-tab marker below is an 8px Dot Red
+       circle sitting directly above the icon, so a circular icon here rendered as two stacked
+       circles on the default tab and read as a fault rather than a marker. U+25C6 is Geometric
+       Shapes-family and carries no emoji presentation, so it stays monochrome and inherits colour
+       like the other four. U+2B25 (medium) rather than U+25C6 (small): measured at 18px Barlow the
+       small diamond's ink is 13.0px wide against 15.9-18.0px for the other four icons, which read
+       as visibly undersized next to its siblings. -->
+  <button data-tab="today" class="active"><span class="ic">&#11045;</span>Today</button>
   <button data-tab="history"><span class="ic">&#9776;</span>History</button>
   <button data-tab="dashboard"><span class="ic">&#9650;</span>Dashboard</button>
   <button data-tab="plan"><span class="ic">&#9636;</span>Plan</button>
@@ -345,7 +406,7 @@ const FONT_MICRO   = '10px Barlow';    // --fs-micro: gridline values, "no data"
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-09-19 18:31';
+const APP_BUILD = '2026-09-26 20:30';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -1608,9 +1669,9 @@ function renderToday(){
   html += `<div class="card">
     <h3>This week</h3>
     ${shownTypes.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px">
-      ${shownTypes.map(t=>`<div style="flex:1 1 auto;min-width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px">
-        <div style="font-size:var(--fs-micro);color:var(--text-dim);text-transform:uppercase;font-weight:600;letter-spacing:.02em">${esc(t.label)}</div>
-        <div style="font-size:var(--fs-ui);font-weight:800;margin-top:2px">${weekCounts[t.id]}</div>
+      ${shownTypes.map(t=>`<div style="flex:1 1 auto;min-width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--sp-2) var(--sp-3)">
+        <div style="font-size:var(--fs-micro);color:var(--text-dim);text-transform:uppercase;font-weight:600;letter-spacing:.08em">${esc(t.label)}</div>
+        <div style="font-size:var(--fs-ui);font-weight:800;margin-top:var(--sp-1)">${weekCounts[t.id]}</div>
       </div>`).join('')}
     </div>` : `<div style="font-size:var(--fs-body);color:var(--text-dim)">Nothing logged yet this week.</div>`}
   </div>`;
@@ -1656,8 +1717,8 @@ function renderToday(){
     const exercises = isW1 ? WORKOUT1_EXERCISES : WORKOUT2_EXERCISES;
     const idx = block==="Wk1-2"?0:block==="Wk3-4"?1:2;
     const sessionSummary = `Strength — Workout ${isW1?1:2}`;
-    html += `<details class="card" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">${sessionSummary}</span><span class="tag">${block}</span></summary><div class="card-body">`;
-    html += `<div class="toolbar"><button onclick="startWorkoutMode('${key}',${week})">Start workout</button></div>`;
+    html += `<details class="card primary" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">${sessionSummary}</span><span class="tag">${block}</span></summary><div class="card-body">`;
+    html += `<div class="toolbar primary-action"><button onclick="startWorkoutMode('${key}',${week})">Start workout</button></div>`;
     // Swipeable carousel: one page per exercise, except superset pairs (4A+4B, 5A+5B etc — same non-null
     // `sup` id) which share a page so you're not swiping away mid-superset. Prev/Next buttons + dots give a
     // tap-based fallback alongside the real swipe gesture wired up by wireCarousels() after render.
@@ -1683,7 +1744,7 @@ function renderToday(){
   } else if(CARDIO_TYPES.includes(todayType)){
     const rowKey = `${week}_${todayType}`;
     const rec = DATA.cardio[rowKey] || {};
-    html += `<details class="card" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">Cardio — ${esc(todayType)}</span><span class="tag">${block}</span></summary><div class="card-body">
+    html += `<details class="card primary" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">Cardio — ${esc(todayType)}</span><span class="tag">${block}</span></summary><div class="card-body">
       <div style="font-size:var(--fs-body);color:var(--text-dim);margin:-4px 0 12px">${(CARDIO_TARGETS[todayType]||{})[block]||''}</div>
       <div class="row3">
         ${fieldHtml('Avg HR (bpm)', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="hr" value="${esc(rec.hr??'')}">`)}
@@ -1692,7 +1753,7 @@ function renderToday(){
       </div>
       ${fieldHtml('Active calories', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="calories" value="${esc(rec.calories??'')}">`)}
       ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="cardio" data-row="${rowKey}" data-f="rpe" value="${esc(rec.rpe??'')}">`)}
-      <div style="font-size:var(--fs-caption);color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
+      <div style="font-size:var(--fs-caption);color:var(--text-dim);margin:calc(var(--sp-1) * -1) 0 var(--sp-3)">${RPE_LEGEND}</div>
       ${fieldHtml('Completed?', ynPills('cardio', rowKey, 'done', rec.done))}
       ${fieldHtml('Notes', `<textarea data-k="cardio" data-row="${rowKey}" data-f="notes">${esc(rec.notes||'')}</textarea>`)}
     </div></details>`;
@@ -1701,7 +1762,7 @@ function renderToday(){
     // — no toggle needed to "turn it on", same as strength/cardio days. Stored separately from DATA.skip
     // (which is for ad-hoc extras on top of whatever's picked) so the two never collide.
     const rec = DATA.activity[dayKey] || {};
-    html += `<details class="card" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">${esc(todayType)}</span><span class="tag">today's pick</span></summary><div class="card-body">
+    html += `<details class="card primary" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">${esc(todayType)}</span><span class="tag">today's pick</span></summary><div class="card-body">
       <div class="row2">
         ${fieldHtml('Active calories', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="calories" value="${esc(rec.calories??'')}">`)}
         ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="activity" data-row="${dayKey}" data-f="distance" value="${esc(rec.distance??'')}">`)}
@@ -1739,7 +1800,7 @@ function renderToday(){
   // unchanged and still write to their own separate buckets (DATA.skip / DATA.extra) — this is a
   // presentation change only. The summary tag shows whichever is currently active, so a collapsed
   // card still tells you something is logged inside it.
-  html += `<details class="card" ${cardOpenAttrs('card-logmore')}><summary><span class="sumtxt">+ Log something else</span>${
+  html += `<details class="card quiet" ${cardOpenAttrs('card-logmore')}><summary><span class="sumtxt">+ Log something else</span>${
     skipRec.skipped ? `<span class="tag">${esc(skipRec.reason||'Rest')}</span>`
     : extraRec.active ? `<span class="tag">${esc(extraRec.type||'on')}</span>` : ''
   }</summary><div class="card-body">
@@ -1769,7 +1830,7 @@ function renderToday(){
         </div>
         ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${esc(extraRec.calories??'')}">`)}
         ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="extra" data-row="${dayKey}" data-f="rpe" value="${esc(extraRec.rpe??'')}">`)}
-        <div style="font-size:var(--fs-caption);color:var(--text-dim);margin:-4px 0 10px">${RPE_LEGEND}</div>
+        <div style="font-size:var(--fs-caption);color:var(--text-dim);margin:calc(var(--sp-1) * -1) 0 var(--sp-3)">${RPE_LEGEND}</div>
       ` : `
         <div class="row2">
           ${fieldHtml('Active calories', `<input type="number" data-k="extra" data-row="${dayKey}" data-f="calories" value="${esc(extraRec.calories??'')}">`)}
@@ -1794,7 +1855,7 @@ function renderToday(){
 
   // Mobility (always)
   const mobRec = DATA.mobility[dayKey] || {};
-  html += `<details class="card" ${cardOpenAttrs('card-mobility')}><summary><span class="sumtxt">Mobility</span><span class="tag">daily</span></summary><div class="card-body">
+  html += `<details class="card quiet" ${cardOpenAttrs('card-mobility')}><summary><span class="sumtxt">Mobility</span><span class="tag">daily</span></summary><div class="card-body">
     ${fieldHtml('Full routine done?', ynPills('mobility', dayKey, 'full', mobRec.full))}
     ${fieldHtml('Quick pre-workout version done?', ynPills('mobility', dayKey, 'quick', mobRec.quick))}
     ${fieldHtml('Tightness (1-5)', `<input type="number" min="1" max="5" data-k="mobility" data-row="${dayKey}" data-f="tight" value="${esc(mobRec.tight??'')}">`)}
@@ -1805,8 +1866,8 @@ function renderToday(){
   // Pre-session readiness (always, daily) — a LEADING indicator (soreness/sleep/stress/motivation, all
   // higher-is-better) to complement session RPE, which is a lagging, post-session-only signal.
   const readyRec = DATA.readiness[dayKey] || {};
-  html += `<details class="card" ${cardOpenAttrs('card-readiness')}><summary><span class="sumtxt">Readiness</span><span class="tag">daily</span></summary><div class="card-body">
-    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:10px">Quick pre-session check, higher = better on every scale.</div>
+  html += `<details class="card quiet" ${cardOpenAttrs('card-readiness')}><summary><span class="sumtxt">Readiness</span><span class="tag">daily</span></summary><div class="card-body">
+    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:var(--sp-3)">Quick pre-session check, higher = better on every scale.</div>
     ${fieldHtml('Soreness (1 very sore — 5 fresh)', scalePills('readiness', dayKey, 'soreness', readyRec.soreness))}
     ${fieldHtml('Sleep quality (1 poor — 5 great)', scalePills('readiness', dayKey, 'sleep', readyRec.sleep))}
     ${fieldHtml('Stress (1 high — 5 calm)', scalePills('readiness', dayKey, 'stress', readyRec.stress))}
@@ -1824,7 +1885,7 @@ function renderToday(){
   // each item inside the group keeps its own dose/note/Y-N toggle, so nothing about what's tracked
   // actually changed, only how many times the time label repeats on screen.
   const supGroups = groupSupplementsByTime(supStack);
-  html += `<details class="card" ${cardOpenAttrs('card-supplements')}><summary><span class="sumtxt">Supplements</span><span class="tag">${todayType==='Hockey Training'?'training day':todayType==='Hockey Match'?'match day':'daily'}</span></summary><div class="card-body">
+  html += `<details class="card quiet" ${cardOpenAttrs('card-supplements')}><summary><span class="sumtxt">Supplements</span><span class="tag">${todayType==='Hockey Training'?'training day':todayType==='Hockey Match'?'match day':'daily'}</span></summary><div class="card-body">
     ${supGroups.map(grp=>{
       if(grp.items.length===1){
         const item = grp.items[0], def = SUPPLEMENT_ITEMS[item.id];
@@ -1847,7 +1908,7 @@ function renderToday(){
       </div>`;
     }).join('')}
     <div class="skip-banner" style="background:var(--surface2);border-color:var(--border);color:var(--text-dim);font-weight:400;font-size:var(--fs-caption);display:block">Daily protein target (${esc(proteinTgt.label.toLowerCase())}): <b>${esc(proteinTgt.range)}</b> at 109kg. Your 2 daily shakes cover ~42g regardless of day type — the rest needs to come from food across meals.</div>
-    <div style="font-size:var(--fs-micro);color:var(--text-faint);margin-top:10px">Phone reminders come from your Calendar/Shortcuts, not this app — this is just your log.</div>
+    <div style="font-size:var(--fs-micro);color:var(--text-faint);margin-top:var(--sp-3)">Phone reminders come from your Calendar/Shortcuts, not this app — this is just your log.</div>
   </div></details>`;
 
   // Weekly bodyweight check-in (Monday only)
@@ -2541,7 +2602,7 @@ function workloadRatioNote(r){
   else if(r.ratio > 1.3){ msg = `This week's load is ${pct}% of your last ${r.weeksUsed}-week average — a bit above the typical range. Keep an eye on it.`; color='var(--warn)'; }
   else if(r.ratio < 0.8){ msg = `This week's load is ${pct}% of your last ${r.weeksUsed}-week average — lighter than usual (could be planned recovery, or a sign you're doing less than you think).`; color='var(--text-dim)'; }
   else { msg = `This week's load is ${pct}% of your last ${r.weeksUsed}-week average — in your typical range.`; color='var(--success)'; }
-  return `<div style="font-size:var(--fs-caption);color:${color};margin-top:6px">${msg}</div>`;
+  return `<div style="font-size:var(--fs-caption);color:${color};margin-top:var(--sp-2)">${msg}</div>`;
 }
 
 // Checkpoint weeks per cycle — Cycle 1 tests at absolute weeks 1/6/12, Cycle 2 at 14/19/25 (its own
@@ -2571,12 +2632,12 @@ function testDelta(field, higherIsBetter, cycle){
 function testFieldRow(label, field, unit, protocol){
   const c1 = TEST_CHECKPOINTS[1], c2 = TEST_CHECKPOINTS[2];
   return `<div class="field"><label>${esc(label)} (${unit})</label>
-    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin:-2px 0 6px">${esc(protocol)}</div>
-    <div style="font-size:var(--fs-micro);color:var(--text-faint);text-transform:uppercase;letter-spacing:.02em;margin-bottom:2px">Cycle 1</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin:0 0 var(--sp-2)">${esc(protocol)}</div>
+    <div style="font-size:var(--fs-micro);color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:var(--sp-1)">Cycle 1</div>
     <div class="row3">
       ${c1.map((w,i)=>`<input type="number" step="0.1" placeholder="Wk${i===0?1:i===1?6:12}" data-k="tests" data-row="${w}" data-f="${field}" value="${esc((DATA.tests[w]&&DATA.tests[w][field]!==undefined)?DATA.tests[w][field]:'')}">`).join('')}
     </div>
-    <div style="font-size:var(--fs-micro);color:var(--text-faint);text-transform:uppercase;letter-spacing:.02em;margin:8px 0 2px">Cycle 2</div>
+    <div style="font-size:var(--fs-micro);color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin:var(--sp-2) 0 var(--sp-1)">Cycle 2</div>
     <div class="row3">
       ${c2.map((w,i)=>`<input type="number" step="0.1" placeholder="Wk${i===0?1:i===1?6:12}" data-k="tests" data-row="${w}" data-f="${field}" value="${esc((DATA.tests[w]&&DATA.tests[w][field]!==undefined)?DATA.tests[w][field]:'')}">`).join('')}
     </div></div>`;
@@ -2671,7 +2732,7 @@ function renderDashboard(){
   </div>
   <div class="card">
     <h3>Training Streak <span class="tag">${currentStreak()} day${currentStreak()===1?'':'s'}</span></h3>
-    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:10px">Green = trained, grey = genuine rest/skip (doesn't break your streak), red = missed. One row per week.</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:var(--sp-3)">Green = trained, grey = genuine rest/skip (doesn't break your streak), red = missed. One row per week.</div>
     ${renderHeatmapGrid()}
   </div>
   <div class="card">
@@ -2683,7 +2744,7 @@ function renderDashboard(){
   </div>
   <div class="card">
     <h3>Fitness Tests <span class="tag">C1+C2 · Wk 1/6/12</span></h3>
-    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:10px">Same benchmark, same conditions, three checkpoints — this is the only thing in the app that tells you whether 12 weeks of training actually worked, not just whether it happened.</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:var(--sp-3)">Same benchmark, same conditions, three checkpoints — this is the only thing in the app that tells you whether 12 weeks of training actually worked, not just whether it happened.</div>
     ${testFieldRow('20m Sprint', 'sprint', 'sec', 'Standing start, 20m maximal sprint, timed.')}
     ${testDeltaHtml('sprint', 's', false)}
     ${testFieldRow('5-0-5 Change of Direction', 'cod', 'sec', "10m run-in, sprint 5m, plant + turn 180°, sprint back 5m — time the middle 5m-0-5m only.")}
@@ -2708,7 +2769,7 @@ function renderDashboard(){
       <optgroup label="Workout 1">${strengthExerciseList().filter(e=>e.group==='Workout 1').map(e=>`<option value="${e.key}|${e.slot}" ${selectedStrengthEx.key===e.key&&selectedStrengthEx.slot===e.slot?'selected':''}>${esc(e.label)}</option>`).join('')}</optgroup>
       <optgroup label="Workout 2">${strengthExerciseList().filter(e=>e.group==='Workout 2').map(e=>`<option value="${e.key}|${e.slot}" ${selectedStrengthEx.key===e.key&&selectedStrengthEx.slot===e.slot?'selected':''}>${esc(e.label)}</option>`).join('')}</optgroup>
     </select>`)}
-    <div id="strength-chart-label" style="font-size:var(--fs-caption);color:var(--text-dim);margin:-6px 0 8px"></div>
+    <div id="strength-chart-label" style="font-size:var(--fs-caption);color:var(--text-dim);margin:calc(var(--sp-1) * -1) 0 var(--sp-2)"></div>
     <canvas id="strength-chart" height="90"></canvas>
   </div>
   <div class="card">
@@ -2881,7 +2942,7 @@ function onPlateCalcInput(){
     return;
   }
   const plateStr = r.plates.map(p=>`${p.count}&times;${p.kg}kg`).join(' + ');
-  out.innerHTML = `<div style="font-size:var(--fs-ui);font-weight:700;margin-bottom:2px">${plateStr} <span style="font-weight:400;color:var(--text-dim);font-size:var(--fs-body)">per side</span></div>` +
+  out.innerHTML = `<div style="font-size:var(--fs-ui);font-weight:700;margin-bottom:var(--sp-1)">${plateStr} <span style="font-weight:400;color:var(--text-dim);font-size:var(--fs-body)">per side</span></div>` +
     (r.achievable ? '' : `<div style="font-size:var(--fs-caption);color:var(--warn)">Closest with these plates: ${(target - r.remainder*2).toFixed(1)}kg (off by ${(r.remainder*2).toFixed(2)}kg) — smallest plate assumed is 0.5kg</div>`);
 }
 // Rendered as a plain function rather than inline in the template so the signed-in / signed-out /
@@ -2889,7 +2950,7 @@ function onPlateCalcInput(){
 function cloudCardHtml(){
   const line = '<div style="font-size:var(--fs-caption);color:' +
     (cloudState.status==='error' ? 'var(--danger)' : 'var(--text-dim)') +
-    ';margin-bottom:10px">' + esc(cloudStatusLine()) + '</div>';
+    ';margin-bottom:var(--sp-3)">' + esc(cloudStatusLine()) + '</div>';
 
   if(!cloudConfigured()){
     return line + '<div style="font-size:var(--fs-caption);color:var(--text-faint)">' +
@@ -2905,7 +2966,7 @@ function cloudCardHtml(){
   const sess = getSession();
   const who = (sess && sess.user && sess.user.email) ? sess.user.email : 'signed in';
   return line +
-    '<div style="font-size:var(--fs-caption);color:var(--text-faint);margin-bottom:10px">' + esc(who) + '</div>' +
+    '<div style="font-size:var(--fs-caption);color:var(--text-faint);margin-bottom:var(--sp-3)">' + esc(who) + '</div>' +
     '<div class="toolbar"><button onclick="cloudSyncNow(false)">Sync now</button></div>' +
     '<div class="toolbar" style="margin-top:8px"><button onclick="cloudSignOut()">Sign out</button></div>';
 }
@@ -2939,31 +3000,31 @@ function renderPlan(){
       ${fieldHtml('Notes', `<textarea data-k="injury" data-row="${injKey}" data-f="notes">${esc(injRec.notes||'')}</textarea>`)}
     </div>`;
   panel.innerHTML = `<h2>Plan</h2>
-  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Daily mobility routine</h3>
+  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Daily mobility routine</h3>
   <div class="card"><ol class="mob-ol">${MOBILITY_ROUTINE.map(([ex,reps,link])=>`<li><b>${esc(ex)}</b> — ${esc(reps)} &middot; <a class="demo" href="${link}" target="_blank" rel="noopener">Watch</a></li>`).join('')}</ol></div>
-  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Plate calculator</h3>
+  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Plate calculator</h3>
   <div class="card">
     <div class="field"><label>Bar weight (kg)</label><input type="number" step="0.5" value="${esc(DATA.settings.barKg??20)}" onchange="setBarKg(this.value)"></div>
     <div class="field"><label>Target weight (kg)</label><input type="number" step="0.5" id="plate-target" oninput="onPlateCalcInput()" placeholder="e.g. 60"></div>
     <div id="plate-result"></div>
-    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:6px">Assumes a standard plate set (25/20/15/10/5/2.5/1.25/0.5kg). Doesn't know your actual gym or home plates — treat the breakdown as a starting guess, not gospel.</div>
+    <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:var(--sp-2)">Assumes a standard plate set (25/20/15/10/5/2.5/1.25/0.5kg). Doesn't know your actual gym or home plates — treat the breakdown as a starting guess, not gospel.</div>
   </div>
-  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Supplement stock</h3>
+  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Supplement stock</h3>
   <div class="card">
-    <div style="font-size:var(--fs-body);color:var(--text-dim);margin-bottom:10px">Pill count for capsule/tablet/softgel supplements only — protein, creatine, the Vit C dose and the collagen peptide are powders/scoops, not tracked here. Assumes a fresh ${PILL_BOTTLE_SIZE}-count bottle; tap Restock when you open a new one.</div>
+    <div style="font-size:var(--fs-body);color:var(--text-dim);margin-bottom:var(--sp-3)">Pill count for capsule/tablet/softgel supplements only — protein, creatine, the Vit C dose and the collagen peptide are powders/scoops, not tracked here. Assumes a fresh ${PILL_BOTTLE_SIZE}-count bottle; tap Restock when you open a new one.</div>
     ${PILL_STOCK_ITEMS.map(item=>{
       const remaining = remainingStock(item.id);
       const low = remaining <= 10;
       return `<div class="exrow">
         <div class="exname">${esc(item.label)}</div>
-        <div class="extarget" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div class="extarget" style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)">
           <span style="font-size:var(--fs-ui);font-weight:700;color:${low?'var(--warn)':'var(--text)'}">${remaining} left</span>
-          <button type="button" onclick="restockItem('${item.id}')" style="width:auto;padding:7px 14px;font-size:var(--fs-body);font-weight:700;font-family:inherit;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm)">Restock (${PILL_BOTTLE_SIZE})</button>
+          <button type="button" onclick="restockItem('${item.id}')" style="width:auto;padding:var(--sp-2) var(--sp-4);font-size:var(--fs-body);font-weight:700;font-family:inherit;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm)">Restock (${PILL_BOTTLE_SIZE})</button>
         </div>
       </div>`;
     }).join('')}
   </div>
-  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Log a niggle or injury</h3>
+  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Log a niggle or injury</h3>
   <p style="font-size:var(--fs-caption);color:var(--text-faint);margin:0 0 8px">Logged against today, ${esc(fmtDate(startOfDay(new Date())))}.</p>
   ${injSection}`;
   wireCard(panel);
@@ -2976,16 +3037,16 @@ function renderSettings(){
   <h3 style="font-size:var(--fs-ui);margin:0 0 8px">Cloud sync</h3>
   <div class="card">${cloudCardHtml()}</div>
 
-  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">App updates</h3>
+  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">App updates</h3>
   <div class="card">
-    <div style="font-size:var(--fs-body);color:var(--text-dim);margin-bottom:10px">This is a home-screen app with no browser bar to pull-to-refresh — after Simar pushes a code change, tap below to force-fetch the latest version. Safe any time: it only clears the app's cached files, never your logged data.</div>
+    <div style="font-size:var(--fs-body);color:var(--text-dim);margin-bottom:var(--sp-3)">This is a home-screen app with no browser bar to pull-to-refresh — after Simar pushes a code change, tap below to force-fetch the latest version. Safe any time: it only clears the app's cached files, never your logged data.</div>
     <div class="toolbar"><button onclick="forceRefresh()">Refresh app (get latest version)</button></div>
     <div style="font-size:var(--fs-caption);color:var(--text-faint);margin-top:8px">
       Running build: <strong style="color:var(--text-dim)">${esc(APP_BUILD)}</strong><br>
       If this doesn't match the version you just uploaded, the phone is still on the old copy \u2014 tap Refresh above.
     </div>
   </div>
-  <h3 style="font-size:var(--fs-ui);margin:18px 0 8px">Data</h3>
+  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Data</h3>
   <div class="toolbar">
     <button onclick="exportData()">Export backup</button>
     <button class="secondary" onclick="document.getElementById('import-file').click()">Import backup</button>
