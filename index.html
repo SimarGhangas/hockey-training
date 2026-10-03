@@ -121,7 +121,11 @@ main{padding:var(--sp-4) var(--sp-4) var(--sp-6);max-width:600px;margin:0 auto;}
 .mobrow .pill-group{flex:0 0 auto;}
 input.prefilled{color:var(--text-dim);}
 #video-modal[hidden]{display:none;}
-#video-modal{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:var(--sp-4);}
+/* Safe-area padding matches the workout overlay, the app's other full-screen fixed element. Without
+   it the box can centre under a notch on a tall iPhone and put the Close button out of reach. */
+#video-modal{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+  padding:calc(var(--sp-4) + env(safe-area-inset-top,0px)) calc(var(--sp-4) + env(safe-area-inset-right,0px))
+          calc(var(--sp-4) + env(safe-area-inset-bottom,0px)) calc(var(--sp-4) + env(safe-area-inset-left,0px));}
 .vm-backdrop{position:absolute;inset:0;background:rgba(11,18,32,.72);}
 .vm-box{position:relative;width:100%;max-width:720px;background:var(--surface);border:1px solid var(--border);
   padding:var(--sp-3);max-height:90vh;overflow:auto;}
@@ -533,7 +537,7 @@ const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3A
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-10-04 10:00';
+const APP_BUILD = '2026-10-04 10:40';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
