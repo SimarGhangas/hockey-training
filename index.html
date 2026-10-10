@@ -363,6 +363,40 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
    strip under the home indicator. env() resolves to 0 everywhere that has no notch, so this is safe
    unconditionally. Not verifiable from this environment; it is the standard fix for a known problem
    rather than a response to an observed one. */
+/* Quick log. Same overlay shape as workout mode, deliberately NOT the same behaviour: no wake lock,
+   and it closes on commit. The nav stays reachable because logging a walk is not a session. */
+#quick-log{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
+#quick-log[hidden]{display:none;}
+.ql-head{display:flex;align-items:baseline;gap:var(--sp-3);padding:var(--sp-4) var(--sp-4) 0;}
+.ql-title{font-size:var(--fs-head);font-weight:700;}
+.ql-date{font-size:var(--fs-ui);color:var(--text-dim);margin-left:auto;}
+.ql-body{flex:1 1 auto;overflow-y:auto;padding:var(--sp-4);}
+.ql-label{font-size:var(--fs-caption);color:var(--text-dim);text-transform:uppercase;
+  font-weight:600;letter-spacing:.08em;}
+.ql-grid{display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:var(--sp-2);margin-top:var(--sp-3);}
+/* 92px keeps every tile inside thumb reach in a four-row grid, and is above the 44px target floor
+   with room for a two-line name — "Hockey training" wraps at the 109px tile width. */
+.ql-tile{background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  padding:var(--sp-3);min-height:92px;display:flex;flex-direction:column;justify-content:flex-end;
+  gap:var(--sp-1);font-family:inherit;text-align:left;cursor:pointer;}
+.ql-tile .nm{font-size:var(--fs-ui);font-weight:600;line-height:1.12;}
+.ql-tile .du{font-size:var(--fs-caption);color:var(--text-dim);font-variant-numeric:tabular-nums;}
+/* Selection is carried by weight and a border, NOT by the accent: the accent is spent once per
+   screen and that one place is the commit button. Filling the tile too would be two red points on
+   one screen, which is what the drawn version did and what the guard caught. */
+/* No padding compensation for the thicker border: box-sizing is border-box, so the tile's outer
+   size is unchanged and only the content box shifts by a pixel. The first attempt hand-corrected it
+   with an odd pixel value, which is off the 4-point scale, and the spacing guard said so.
+   NOTE both that guard and the Dot Red one scan the SOURCE, so they cannot tell code from comment:
+   do not write an off-scale value or a reserved hex in a comment either. Each has now cost a run. */
+.ql-tile.sel{background:var(--surface);border-color:var(--text);border-width:2px;}
+.ql-tile.sel .nm{color:var(--text);}
+.ql-tile.sel .du{color:var(--text-dim);}
+.ql-foot{padding:var(--sp-3) var(--sp-4) var(--sp-4);border-top:1px solid var(--border);}
+.ql-go{width:100%;min-height:56px;border:none;background:var(--sg-accent);color:var(--ink-on-fill);
+  font-family:inherit;font-size:var(--fs-head);font-weight:600;cursor:pointer;}
+.ql-go[disabled]{background:var(--surface2);color:var(--text-dim);cursor:default;}
 #workout-mode{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
 #workout-mode[hidden]{display:none;}
@@ -379,6 +413,19 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
 .wm-timer{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border);
   padding:var(--sp-3) var(--sp-4) var(--sp-4);
   margin:var(--sp-3) calc(var(--sp-4) * -1) calc(var(--sp-5) * -1);text-align:center;}
+/* Finish. The subject is the best set and its comparison, not the duration — 52 minutes is the least
+   interesting fact about a lift. --fs-subject, not --fs-hero: this is read sitting down. */
+.fin-label{font-size:var(--fs-caption);color:var(--text-dim);text-transform:uppercase;
+  font-weight:600;letter-spacing:.08em;margin-bottom:var(--sp-3);}
+/* A caps section label sitting directly on a field's own caps label reads as one run-on line —
+   they are the same size, weight and colour. The gap is what separates them. */
+.fin-label + .row2{margin-top:var(--sp-2);}
+.fin-fig{display:flex;align-items:baseline;gap:var(--sp-3);margin-top:var(--sp-2);}
+.fin-n{font-size:var(--fs-subject);font-weight:600;letter-spacing:-.045em;line-height:.82;
+  font-variant-numeric:tabular-nums;}
+.fin-unit{font-size:var(--fs-head);font-weight:600;color:var(--text-dim);}
+.fin-note{margin-top:var(--sp-3);font-size:var(--fs-ui);color:var(--text-dim);}
+.fin-hint{margin-top:var(--sp-2);font-size:var(--fs-caption);color:var(--text-dim);}
 .wm-timer .lbl{display:block;font-size:var(--fs-caption);font-weight:600;color:var(--text-dim);
   text-transform:uppercase;letter-spacing:.08em;}
 .wm-timer .t{display:block;font-size:var(--fs-hero);font-weight:600;letter-spacing:-.045em;
@@ -564,6 +611,7 @@ table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:va
 </main>
 
 <div id="workout-mode" hidden></div>
+<div id="quick-log" hidden></div>
 
 <nav class="bottomnav">
   <!-- Today's glyph is a DIAMOND, not a circle: the active-tab marker below is an 8px Dot Red
@@ -688,7 +736,7 @@ const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3A
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-10-10 22:43';
+const APP_BUILD = '2026-10-10 23:04';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -1107,17 +1155,17 @@ const CARDIO_TYPES = Object.keys(CARDIO_TARGETS);
  *   activity -> free-form: calories / distance / HR / duration / RPE
  */
 const ACTIVITIES = [
-  {id:'w1',              label:'Strength — Workout 1',    kind:'strength'},
-  {id:'w2',              label:'Strength — Workout 2',    kind:'strength'},
-  {id:'Steady',          label:'Cardio — Steady',         kind:'cardio'},
-  {id:'Sprint / COD',    label:'Cardio — Sprint / COD',   kind:'cardio'},
-  {id:'Interval',        label:'Cardio — Interval',       kind:'cardio'},
-  {id:'Football',        label:'Football',                kind:'activity'},
-  {id:'Hockey Training', label:'Hockey Training',         kind:'activity'},
-  {id:'Hockey Match',    label:'Hockey Match',            kind:'activity'},
-  {id:'Padel',           label:'Padel',                   kind:'activity'},
-  {id:'Walk',            label:'Walk',                    kind:'activity'},
-  {id:'Other Activity',  label:'Other Activity',          kind:'activity'},
+  {id:'w1',              label:'Strength — Workout 1',    kind:'strength', short:'Weights 1'},
+  {id:'w2',              label:'Strength — Workout 2',    kind:'strength', short:'Weights 2'},
+  {id:'Steady',          label:'Cardio — Steady',         kind:'cardio',   short:'Steady'},
+  {id:'Sprint / COD',    label:'Cardio — Sprint / COD',   kind:'cardio',   short:'Sprint / COD'},
+  {id:'Interval',        label:'Cardio — Interval',       kind:'cardio',   short:'Interval'},
+  {id:'Football',        label:'Football',                kind:'activity', short:'Football'},
+  {id:'Hockey Training', label:'Hockey Training',         kind:'activity', short:'Hockey training'},
+  {id:'Hockey Match',    label:'Hockey Match',            kind:'activity', short:'Hockey match'},
+  {id:'Padel',           label:'Padel',                   kind:'activity', short:'Padel'},
+  {id:'Walk',            label:'Walk',                    kind:'activity', short:'Walk'},
+  {id:'Other Activity',  label:'Other Activity',          kind:'activity', short:'Other'},
 ];
 // Kept as an alias so the many existing references still read naturally. Same array, one source.
 const SCHEDULABLE_TYPES = ACTIVITIES;
@@ -2354,17 +2402,253 @@ function updateWorkoutTimerStrip(){
   strip.hidden = false;
 }
 
+/* ================= QUICK LOG =================
+ * Nine of the eleven activity types are not strength, so most days are "say what you did and how
+ * long". That used to mean: open Today, tap "Change session", pick from a <select>, then find the
+ * card. The grid is a faster way IN — it is not a replacement, and the select is untouched.
+ *
+ * Deliberately NOT a takeover mode in the way workout mode is: no wake lock, and it closes the
+ * moment you commit. Logging a walk is not a session.
+ *
+ * Selection lives in memory, like openCards and exercisePageIndex. Nothing UI-shaped goes in DATA.
+ */
+let quickSelection = null;
+// Derived from ACTIVITIES plus the one daily card that earns a tile. Deriving rather than listing
+// is the rule here: the last hand-maintained copy of this list (SESSION_LABEL) drifted.
+const QUICK_TILES = ACTIVITIES.concat([{id:'__mobility', label:'Mobility', kind:'daily', short:'Mobility'}]);
+
+// "Pre-filled from the last session of that type" (Simar's decision 2, 10 Oct). Reads the real
+// buckets rather than inventing a default, and returns null when there is no history to draw on —
+// a made-up duration on a tile would be a number the app is asserting without evidence.
+function usualDurationFor(id){
+  const row = ACTIVITIES.find(a => a.id === id);
+  if(!row || row.kind === 'strength') return null;
+  const weeks = [];
+  const now = weekInfoFor(startOfDay(new Date()));
+  for(let w = now.week; w >= Math.max(1, now.week - 12); w--) weeks.push(w);
+  for(const w of weeks){
+    if(row.kind === 'cardio'){
+      const r = DATA.cardio[`${w}_${id}`];
+      if(r && r.dur) return parseInt(r.dur, 10) || null;
+    } else {
+      for(let d = 6; d >= 0; d--){
+        if(DATA.dayPick[`${w}_${d}`] !== id) continue;
+        const r = DATA.activity[`${w}_${d}`];
+        if(r && r.duration) return parseInt(r.duration, 10) || null;
+      }
+    }
+  }
+  return null;
+}
+
+function openQuickLog(){
+  quickSelection = null;
+  document.getElementById('quick-log').hidden = false;
+  document.body.classList.add('in-quicklog');
+  renderQuickLog();
+}
+function closeQuickLog(){
+  quickSelection = null;
+  document.body.classList.remove('in-quicklog');
+  const el = document.getElementById('quick-log');
+  el.hidden = true;
+  el.innerHTML = '';   // release any ids before Today rebuilds its own
+}
+function selectQuickTile(id){
+  quickSelection = (quickSelection === id) ? null : id;
+  renderQuickLog();
+}
+// Commit. Strength opens workout mode, because logging a lift as "60 minutes" throws away the sets.
+// Everything else sets today's pick and lands on the card that was already there, open.
+function commitQuickLog(){
+  if(!quickSelection) return;
+  const id = quickSelection, info = weekInfoFor(startOfDay(new Date()));
+  closeQuickLog();
+  currentDate = startOfDay(new Date());
+  if(id === '__mobility'){
+    openCards.add('card-mobility');
+    renderToday();
+    const c = document.getElementById('card-mobility');
+    if(c && c.scrollIntoView) c.scrollIntoView({block:'start'});
+    return;
+  }
+  setDayPick(info.week, info.dayIndex, id);   // saves and re-renders Today
+  const row = ACTIVITIES.find(a => a.id === id);
+  if(row && row.kind === 'strength'){ startWorkoutMode(id, info.week); return; }
+  openCards.add('card-session');
+  renderToday();
+  const c = document.getElementById('card-session');
+  if(c && c.scrollIntoView) c.scrollIntoView({block:'start'});
+}
+
+function renderQuickLog(){
+  const el = document.getElementById('quick-log');
+  if(!el || el.hidden) return;
+  const today = startOfDay(new Date());
+  const info = weekInfoFor(today);
+  const stepRec = DATA.steps[`${info.week}_${info.dayIndex}`] || {};
+  const readyRec = DATA.readiness[`${info.week}_${info.dayIndex}`] || {};
+  const readyDone = ['soreness','sleep','stress','motivation'].some(f => readyRec[f] !== undefined && readyRec[f] !== '');
+  const sel = quickSelection;
+  const selRow = sel ? QUICK_TILES.find(t => t.id === sel) : null;
+  const isStrength = selRow && selRow.kind === 'strength';
+
+  el.innerHTML = `<div class="ql-head">
+      <span class="ql-title">Log</span>
+      <span class="ql-date">${esc(DAY_NAMES_FULL[info.dayIndex])} ${esc(fmtDate(today))}</span>
+      <button class="linkbtn" onclick="closeQuickLog()">Close</button>
+    </div>
+    <div class="ql-body">
+      <div class="ql-label">What did you do</div>
+      <div class="ql-grid">
+        ${QUICK_TILES.map(t => {
+          const mins = t.kind === 'strength' ? null : usualDurationFor(t.id);
+          const sub = t.kind === 'strength' ? 'Start' : (mins ? mins + ' min' : '&mdash;');
+          return `<button type="button" class="ql-tile ${sel===t.id?'sel':''}" onclick="selectQuickTile('${esc(t.id)}')">
+            <span class="nm">${esc(t.short || t.label)}</span><span class="du">${sub}</span>
+          </button>`;
+        }).join('')}
+      </div>
+      <div class="ql-label" style="margin-top:var(--sp-5)">Also today</div>
+      <div class="statlist">
+        <div class="statrow"><span>Steps</span><span class="n">${stepRec.count ? esc(Number(stepRec.count).toLocaleString()) : 'Not logged'}</span></div>
+        <div class="statrow"><span>Readiness</span><span class="n">${readyDone ? 'Logged' : 'Not logged'}</span></div>
+      </div>
+    </div>
+    <div class="ql-foot">
+      <button type="button" class="ql-go" ${sel?'':'disabled'} onclick="commitQuickLog()">${
+        sel ? (isStrength ? 'Start ' + esc(selRow.short) : 'Log ' + esc((selRow.short||'').toLowerCase())) : 'Pick one'
+      }</button>
+    </div>`;
+}
+
+/* ================= FINISH =================
+ * Where a lift becomes a record. Previously "Finish" dropped straight back to Today with the session
+ * card open; the fields were there but nothing told you what you had just done.
+ *
+ * A STATE of workout mode rather than a third overlay, so "Back to the session" is free and there is
+ * never a moment where two overlays are stacked. The session fields are the SAME data-k/data-row/data-f
+ * inputs the Today card renders, so they write through bindField exactly as before — nothing new in
+ * storage, and nothing removed from the card.
+ */
+function finishWorkout(){
+  if(!workoutMode) return;
+  workoutMode.finishing = true;
+  renderWorkoutMode();
+  const el = document.getElementById('workout-mode');
+  if(el) el.scrollTop = 0;
+}
+function backToSession(){
+  if(!workoutMode) return;
+  workoutMode.finishing = false;
+  renderWorkoutMode();
+}
+// Every exercise with something logged, newest-style summary: slot name + the sets as they were done.
+function sessionRowsFor(key, week){
+  const exercises = key === 'w1' ? WORKOUT1_EXERCISES : WORKOUT2_EXERCISES;
+  const rows = [];
+  exercises.forEach(ex => {
+    const slot = ex[0];
+    const rec = DATA[key][`${week}_${slot}`];
+    if(!rec || !Array.isArray(rec.sets)) return;
+    const info = exerciseInfo(key, slot);
+    const parts = [];
+    rec.sets.forEach(s => {
+      if(!s) return;
+      if(info && info.timeBased){ if(s.seconds) parts.push(s.seconds + 's'); }
+      else if(s.weight){ parts.push(s.weight + (s.reps ? ' × ' + s.reps : '')); }
+    });
+    if(parts.length) rows.push({ name: ex[2], detail: parts.join(', '), sets: parts.length });
+  });
+  return rows;
+}
+// The subject of this screen: the heaviest real set logged today, and what it was last time. Uses
+// pbValueFor's rule — real logged numbers only, never a prescribed target dressed up as a result.
+function bestOfSession(key, week){
+  const exercises = key === 'w1' ? WORKOUT1_EXERCISES : WORKOUT2_EXERCISES;
+  let best = null;
+  exercises.forEach(ex => {
+    const slot = ex[0];
+    const info = exerciseInfo(key, slot);
+    if(!info || info.timeBased) return;
+    const b = bestRawSet(key, slot, week, info);
+    if(!b || b.weight == null) return;
+    if(!best || b.weight > best.weight) best = { weight: b.weight, reps: b.reps, slot, name: ex[2] };
+  });
+  if(!best) return null;
+  // Prior weeks only, so "up from" can never compare today with itself.
+  const info = exerciseInfo(key, best.slot);
+  let prior = null, priorWeek = null;
+  for(let w = week - 1; w >= 1; w--){
+    const b = bestRawSet(key, best.slot, w, info);
+    if(b && b.weight != null){ prior = b.weight; priorWeek = w; break; }
+  }
+  return Object.assign(best, { prior, priorWeek });
+}
+function renderWorkoutFinish(el, key, week){
+  const sessKey = `${key}_${week}`;
+  const sessRec = DATA.session[sessKey] || {};
+  const rows = sessionRowsFor(key, week);
+  const best = bestOfSession(key, week);
+  const totalSets = rows.reduce((n, r) => n + r.sets, 0);
+  // Works on an ordinary day too: when nothing moved, the line says so plainly, in the same place and
+  // the same size, with no colour. A screen designed only for the good day looks broken on the others.
+  let comparison = '';
+  if(best){
+    if(best.prior == null) comparison = `${esc(best.name)} — first time logged`;
+    else if(best.weight > best.prior) comparison = `${esc(best.name)}, up from ${esc(best.prior)} in week ${esc(best.priorWeek)}`;
+    else if(best.weight < best.prior) comparison = `${esc(best.name)}, ${esc(best.prior)} in week ${esc(best.priorWeek)}`;
+    else comparison = `${esc(best.name)}, same as week ${esc(best.priorWeek)}`;
+  }
+  el.innerHTML = `<div class="wm-head">
+      <div>
+        <div class="wm-title">${key === 'w1' ? 'Workout 1' : 'Workout 2'}</div>
+        <div class="wm-progress">${rows.length} exercise${rows.length===1?'':'s'} &middot; ${totalSets} set${totalSets===1?'':'s'}</div>
+      </div>
+    </div>
+    <div class="wm-body">
+      ${best ? `<div class="fin-label">Best today</div>
+        <div class="fin-fig"><span class="fin-n">${esc(best.weight)}</span><span class="fin-unit">kg</span></div>
+        <div class="fin-note">${comparison}</div>` : `<div class="note" style="margin:0 0 var(--sp-4)">No sets logged yet. Nothing to record for this session.</div>`}
+
+      ${rows.length ? `<div class="fin-label" style="margin-top:var(--sp-5)">Done</div>
+      <div class="statlist">
+        ${rows.map(r=>`<div class="statrow"><span>${esc(r.name)}</span><span class="n">${esc(r.detail)}</span></div>`).join('')}
+      </div>` : ''}
+
+      <div class="fin-label" style="margin-top:var(--sp-5)">From your watch</div>
+      <div class="row2">
+        ${fieldHtml('Session duration (min)', `<input type="number" data-k="session" data-row="${sessKey}" data-f="duration" value="${esc(sessRec.duration??'')}">`)}
+        ${fieldHtml('Active calories', `<input type="number" data-k="session" data-row="${sessKey}" data-f="calories" value="${esc(sessRec.calories??'')}">`)}
+      </div>
+      <div class="row2">
+        ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="session" data-row="${sessKey}" data-f="hr" value="${esc(sessRec.hr??'')}">`)}
+        ${fieldHtml('RPE (0-10)', `<input type="number" min="0" max="10" data-k="session" data-row="${sessKey}" data-f="rpe" value="${esc(sessRec.rpe??'')}">`)}
+      </div>
+      <div class="fin-hint">Heart rate and effort both, and either can be left blank. ${RPE_LEGEND}</div>
+
+      <div class="toolbar primary-action" style="margin-top:var(--sp-5)">
+        <button type="button" onclick="exitWorkoutMode()">Save session</button>
+      </div>
+      <div class="toolbar"><button type="button" class="secondary" onclick="backToSession()">Back to the session</button></div>
+    </div>`;
+  wireCard(el);
+}
+
 function renderWorkoutMode(){
   if(!workoutMode) return;
   const el = document.getElementById('workout-mode');
   const key = workoutMode.key, week = workoutMode.week;
+  // Finish is a STATE of this overlay, not a third one. Returning is then just a re-render, and the
+  // carousel ids are released and reclaimed by the same code path that already handles that.
+  if(workoutMode.finishing){ el.hidden = false; renderWorkoutFinish(el, key, week); return; }
   const exercises = key === 'w1' ? WORKOUT1_EXERCISES : WORKOUT2_EXERCISES;
   el.innerHTML = `<div class="wm-head">
       <div>
         <div class="wm-title">${key === 'w1' ? 'Workout 1' : 'Workout 2'}</div>
         <div class="wm-progress">${esc(workoutProgressText(key, week))}</div>
       </div>
-      <button class="linkbtn" onclick="exitWorkoutMode()">Finish</button>
+      <button class="linkbtn" onclick="finishWorkout()">Finish</button>
     </div>
     <div class="wm-body">${exerciseCarouselHtml(key, week, exercises)}
       <div class="wm-timer" hidden></div>
@@ -2420,6 +2704,12 @@ function renderToday(){
     </div>
     <button onclick="shiftDay(1)">&#8594;</button>
   </div>`;
+  // Entry to the quick log. Only on TODAY: the grid commits against the real current date, so
+  // offering it while browsing back through the week would log the wrong day. Browsing stays on the
+  // existing path — the day picker above, then "Change session" — which is untouched.
+  if(isToday){
+    html += `<div class="toolbar primary-action"><button type="button" onclick="openQuickLog()">Log something</button></div>`;
+  }
 
   if(!info.inProgram){
     // Reachable only for a date BEFORE START_DATE now that the horizon is gone — and currentDate is
