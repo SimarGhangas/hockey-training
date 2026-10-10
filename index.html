@@ -441,7 +441,7 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
 .figwrap input:focus{outline:none;}
 .figfield:focus-within .figwrap{border-bottom-color:var(--text);}
 .figunit{flex-shrink:0;font-size:var(--fs-caption);color:var(--text-dim);}
-.figrow{display:flex;gap:var(--sp-4);margin-top:var(--sp-2);}
+.figrow{display:flex;gap:var(--sp-4);margin-top:var(--sp-4);}
 .rpe-row{display:flex;gap:var(--sp-2);margin-top:var(--sp-3);}
 .rpe-pill{flex:1 1 0;min-height:52px;background:transparent;border:1px solid var(--border);
   color:var(--text-dim);font-family:inherit;font-size:var(--fs-ui);font-weight:600;cursor:pointer;}
@@ -680,9 +680,9 @@ table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:va
 </header>
 
 <main>
-  <div class="panel active" id="panel-today"></div>
+  <div class="panel" id="panel-today"></div>
   <div class="panel" id="panel-history"></div>
-  <div class="panel" id="panel-dashboard"></div>
+  <div class="panel active" id="panel-dashboard"></div>
   <div class="panel" id="panel-plan"></div>
   <div class="panel" id="panel-settings"></div>
 </main>
@@ -698,9 +698,9 @@ table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:va
        like the other four. U+2B25 (medium) rather than U+25C6 (small): measured at 18px Barlow the
        small diamond's ink is 13.0px wide against 15.9-18.0px for the other four icons, which read
        as visibly undersized next to its siblings. -->
-  <button data-tab="today" class="active"><span class="ic">&#11045;</span>Today</button>
+  <button data-tab="today"><span class="ic">&#11045;</span>Today</button>
   <button data-tab="history"><span class="ic">&#9776;</span>History</button>
-  <button data-tab="dashboard"><span class="ic">&#9650;</span>Dashboard</button>
+  <button data-tab="dashboard" class="active"><span class="ic">&#9650;</span>Dashboard</button>
   <button data-tab="plan"><span class="ic">&#9636;</span>Plan</button>
   <button data-tab="settings"><span class="ic">&#9635;</span>Settings</button>
 </nav>
@@ -813,7 +813,7 @@ const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3A
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-10-10 23:28';
+const APP_BUILD = '2026-10-10 23:51';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -2981,6 +2981,50 @@ function exerciseCarouselHtml(key, week, exercises){
   </div>`;
 }
 
+// Today's subject (stage 7). The question this screen answers is "what am I doing now" — so the
+// subject is the session itself, with its headline figure. For a lift that is the heaviest set
+// logged; for everything else it is the duration, which is the one number you always know.
+// Returns null when there is genuinely nothing to show: an empty display figure is worse than none,
+// and the "Log something" action directly beneath is already the prompt.
+function todaySubject(info){
+  if(!info.inProgram) return null;
+  const type = effectiveTypeFor(info.week, info.dayIndex);
+  if(!type) return null;
+  const row = ACTIVITIES.find(a => a.id === type);
+  const label = row ? (row.short || row.label) : type;
+  if(row && row.kind === 'strength'){
+    const best = bestOfSession(type, info.week);
+    if(!best) return { label, fig:null, unit:null, note:'Not started yet.' };
+    let note;
+    if(best.prior == null)              note = `${best.name} — first time logged`;
+    else if(best.weight > best.prior)   note = `${best.name}, up from ${best.prior} in week ${best.priorWeek}`;
+    else if(best.weight < best.prior)   note = `${best.name}, ${best.prior} in week ${best.priorWeek}`;
+    else                                note = `${best.name}, same as week ${best.priorWeek}`;
+    return { label, fig:best.weight, unit:'kg', note };
+  }
+  // Cardio and activities both keep their duration, in different buckets.
+  const t = confirmTargetFor(type);
+  if(!t) return { label, fig:null, unit:null, note:null };
+  const rec = DATA[t.k][t.row] || {};
+  const mins = rec[t.dur];
+  if(mins === undefined || mins === '') return { label, fig:null, unit:null, note:'Not logged yet.' };
+  const usual = usualDurationFor(type);
+  let note = null;
+  if(usual != null && Number(mins) !== usual) note = `Usually ${usual} min.`;
+  return { label, fig:mins, unit:'min', note };
+}
+function todaySubjectHtml(info){
+  const sub = todaySubject(info);
+  if(!sub) return '';
+  return `<div class="subject">
+    <div class="subject-label">${esc(sub.label)}</div>
+    ${sub.fig != null
+      ? `<div class="subject-fig"><span class="subject-n">${esc(sub.fig)}</span><span class="subject-unit">${esc(sub.unit)}</span></div>`
+      : ''}
+    ${sub.note ? `<div class="subject-note">${esc(sub.note)}</div>` : ''}
+  </div>`;
+}
+
 function renderToday(){
   const panel = document.getElementById('panel-today');
   const info = weekInfoFor(currentDate);
@@ -3007,6 +3051,7 @@ function renderToday(){
   // Entry to the quick log. Only on TODAY: the grid commits against the real current date, so
   // offering it while browsing back through the week would log the wrong day. Browsing stays on the
   // existing path — the day picker above, then "Change session" — which is untouched.
+  html += todaySubjectHtml(info);
   if(isToday){
     html += `<div class="toolbar primary-action"><button type="button" onclick="openQuickLog()">Log something</button></div>`;
   }
@@ -3047,13 +3092,13 @@ function renderToday(){
   // SCHEDULABLE_TYPES, not schedulableTypes(): this is a record of what HAPPENED, so a Football
   // session logged before a program started must still appear during the program.
   const shownTypes = SCHEDULABLE_TYPES.filter(t => weekCounts[t.id]>0);
+  // Rows, not tiles — the same demotion the Dashboard's twelve figures got in stage 3. A tile is a box
+  // asking to be noticed; on Today the thing worth noticing is what you are doing now, not a tally of
+  // the last week. Nothing is removed: every type that has a count still has a line.
   html += `<div class="card">
     <h3>Last 7 days</h3>
-    ${shownTypes.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px">
-      ${shownTypes.map(t=>`<div style="flex:1 1 auto;min-width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--sp-2) var(--sp-3)">
-        <div style="font-size:var(--fs-caption);color:var(--text-dim);text-transform:uppercase;font-weight:600;letter-spacing:.08em">${esc(t.label)}</div>
-        <div style="font-size:var(--fs-ui);font-weight:800;margin-top:var(--sp-1)">${weekCounts[t.id]}</div>
-      </div>`).join('')}
+    ${shownTypes.length ? `<div class="statlist">
+      ${shownTypes.map(t=>`<div class="statrow"><span>${esc(t.label)}</span><span class="n">${weekCounts[t.id]}</span></div>`).join('')}
     </div>` : `<div style="font-size:var(--fs-ui);color:var(--text-dim)">Nothing logged in the last 7 days.</div>`}
   </div>`;
 
@@ -3135,13 +3180,17 @@ function renderToday(){
     html += `<details class="card primary" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">${esc(todayType)}</span>${blockBadgeHtml(todayType, week, block)}</summary><div class="card-body">
       ${blockPickerHtml(todayType, week, block)}
       <div style="font-size:var(--fs-ui);color:var(--text-dim);margin:-4px 0 12px">${(CARDIO_TARGETS[todayType]||{})[block]||''}</div>
-      <div class="row3">
-        ${fieldHtml('Avg HR (bpm)', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="hr" value="${esc(rec.hr??'')}">`)}
-        ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="cardio" data-row="${rowKey}" data-f="dist" value="${esc(rec.dist??'')}">`)}
-        ${fieldHtml('Time (min)', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="dur" value="${esc(rec.dur??'')}">`)}
+      <div class="figrow">
+        ${figFieldHtml('Duration', `<input type="number" inputmode="numeric" data-k="cardio" data-row="${rowKey}" data-f="dur" value="${esc(rec.dur??'')}">`, 'min')}
+        ${figFieldHtml('Distance', `<input type="number" inputmode="decimal" step="0.1" data-k="cardio" data-row="${rowKey}" data-f="dist" value="${esc(rec.dist??'')}">`, 'km')}
       </div>
-      ${fieldHtml('Active calories', `<input type="number" data-k="cardio" data-row="${rowKey}" data-f="calories" value="${esc(rec.calories??'')}">`)}
-      ${fieldHtml('Session RPE (0-10)', `<input type="number" min="0" max="10" data-k="cardio" data-row="${rowKey}" data-f="rpe" value="${esc(rec.rpe??'')}">`)}
+      <div class="figrow">
+        ${figFieldHtml('Avg HR', `<input type="number" inputmode="numeric" data-k="cardio" data-row="${rowKey}" data-f="hr" value="${esc(rec.hr??'')}">`, 'bpm')}
+        ${figFieldHtml('Calories', `<input type="number" inputmode="numeric" data-k="cardio" data-row="${rowKey}" data-f="calories" value="${esc(rec.calories??'')}">`, 'kcal')}
+      </div>
+      <div class="figrow">
+        ${figFieldHtml('Effort', `<input type="number" inputmode="numeric" min="0" max="10" data-k="cardio" data-row="${rowKey}" data-f="rpe" value="${esc(rec.rpe??'')}">`, '/10')}
+      </div>
       <div style="font-size:var(--fs-caption);color:var(--text-dim);margin:calc(var(--sp-1) * -1) 0 var(--sp-3)">${RPE_LEGEND}</div>
       ${fieldHtml('Completed?', ynPills('cardio', rowKey, 'done', rec.done))}
       ${fieldHtml('Notes', `<textarea data-k="cardio" data-row="${rowKey}" data-f="notes">${esc(rec.notes||'')}</textarea>`)}
@@ -3152,16 +3201,16 @@ function renderToday(){
     // (which is for ad-hoc extras on top of whatever's picked) so the two never collide.
     const rec = DATA.activity[dayKey] || {};
     html += `<details class="card primary" ${cardOpenAttrs('card-session')}><summary><span class="sumtxt">${esc(todayType===NAMED_ACTIVITY && rec.name ? rec.name : todayType)}</span><span class="tag">today's pick</span></summary><div class="card-body">
-      <div class="row2">
-        ${fieldHtml('Active calories', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="calories" value="${esc(rec.calories??'')}">`)}
-        ${fieldHtml('Distance (km)', `<input type="number" step="0.1" data-k="activity" data-row="${dayKey}" data-f="distance" value="${esc(rec.distance??'')}">`)}
+      <div class="figrow">
+        ${figFieldHtml('Duration', `<input type="number" inputmode="numeric" data-k="activity" data-row="${dayKey}" data-f="duration" value="${esc(rec.duration??'')}">`, 'min')}
+        ${figFieldHtml('Calories', `<input type="number" inputmode="numeric" data-k="activity" data-row="${dayKey}" data-f="calories" value="${esc(rec.calories??'')}">`, 'kcal')}
       </div>
-      <div class="row2">
-        ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="hr" value="${esc(rec.hr??'')}">`)}
-        ${fieldHtml('Duration (min)', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="duration" value="${esc(rec.duration??'')}">`)}
+      <div class="figrow">
+        ${figFieldHtml('Distance', `<input type="number" inputmode="decimal" step="0.1" data-k="activity" data-row="${dayKey}" data-f="distance" value="${esc(rec.distance??'')}">`, 'km')}
+        ${figFieldHtml('Avg HR', `<input type="number" inputmode="numeric" data-k="activity" data-row="${dayKey}" data-f="hr" value="${esc(rec.hr??'')}">`, 'bpm')}
       </div>
-      <div class="row2">
-        ${fieldHtml('RPE (0-10)', `<input type="number" min="0" max="10" data-k="activity" data-row="${dayKey}" data-f="rpe" value="${esc(rec.rpe??'')}">`)}
+      <div class="figrow">
+        ${figFieldHtml('Effort', `<input type="number" inputmode="numeric" min="0" max="10" data-k="activity" data-row="${dayKey}" data-f="rpe" value="${esc(rec.rpe??'')}">`, '/10')}
       </div>
       ${todayType===NAMED_ACTIVITY ? fieldHtml('What was it?', `<input data-k="activity" data-row="${dayKey}" data-f="name" value="${esc(rec.name||'')}" placeholder="e.g. climbing, yoga, swim">`) : ''}
       ${todayType==='Hockey Match' ? `
@@ -5343,7 +5392,10 @@ if(window.matchMedia){
   if(mq.addEventListener) mq.addEventListener('change', onSchemeChange);
   else if(mq.addListener) mq.addListener(onSchemeChange);
 }
+// Today still renders at boot: it holds the carousel ids, and the workout overlay hands them back to
+// it on exit regardless of which tab is showing.
 renderToday();
+renderDashboard();   // the opening panel (stage 7)
 // Plan and Settings render lazily in selectTab(), so nothing renders them at boot.
 // Initial sync, fired after the app has already rendered from localStorage. Deliberately NOT awaited
 // anywhere in the boot path: the app must open and be usable with no network, exactly as before, and
