@@ -448,9 +448,42 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
 /* Selection by border and ink, not by the accent: the accent is spent once per screen and that one
    place is the commit button. Same rule the quick-log tiles follow. */
 .rpe-pill.sel{border-color:var(--text);border-width:2px;color:var(--text);background:var(--surface);}
-input.cf-dur{background:transparent;border:0;padding:0;width:auto;max-width:4ch;font-family:inherit;
-  color:var(--text);}
+/* The lifting view. --fs-hero on the working load: this is the number read at arm's length from a
+   phone on the floor, which is the whole reason that step exists. Measured at 390px before use —
+   "100.0" needs 290px of the 358 the overlay body gives it, so the heaviest realistic load fits. */
+.bigset{padding:var(--sp-3) 0 var(--sp-4);}
+.bigset-head{display:flex;justify-content:space-between;font-size:var(--fs-caption);
+  color:var(--text-dim);text-transform:uppercase;font-weight:600;letter-spacing:.08em;}
+.bigset-fig{display:flex;align-items:baseline;gap:var(--sp-2);margin-top:var(--sp-2);}
+.bigset-n{width:100%;min-width:0;background:transparent;border:0;padding:0;font-family:inherit;
+  font-size:var(--fs-hero);font-weight:600;letter-spacing:-.045em;line-height:.9;color:var(--text);
+  font-variant-numeric:tabular-nums;}
+.bigset-n:focus{outline:none;}
+.bigset-n::placeholder{color:var(--text-dim);}
+.bigset-unit{flex-shrink:0;font-size:var(--fs-head);font-weight:600;color:var(--text-dim);}
+.bigset-reps{display:flex;align-items:baseline;gap:var(--sp-2);margin-top:var(--sp-3);
+  border-top:1px solid var(--border);padding-top:var(--sp-3);}
+.bigset-r{width:3ch;background:transparent;border:0;padding:0;font-family:inherit;
+  font-size:var(--fs-display);font-weight:600;color:var(--text);font-variant-numeric:tabular-nums;}
+.bigset-r:focus{outline:none;}
+.bigset-r::placeholder{color:var(--text-dim);}
+/* A set already logged, collapsed to a row you can tap back into. It is a real button so it is
+   reachable by keyboard and announced as an action, not a div that happens to have a handler. */
+.donerow{display:flex;width:100%;justify-content:space-between;align-items:baseline;
+  padding:var(--sp-3) 0;border:0;border-bottom:1px solid var(--border);background:transparent;
+  color:var(--text-dim);font-family:inherit;font-size:var(--fs-ui);cursor:pointer;text-align:left;}
+.donerow .n{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;}
+/* An empty display-size input collapses to nothing and leaves the unit floating on its own, which is
+   what the first version did when an activity had no history to pre-fill from. A min-width keeps the
+   field present and tappable at its real size whether or not it holds a value. */
+input.cf-dur{background:transparent;border:0;padding:0;width:auto;min-width:2.2ch;max-width:5ch;
+  font-family:inherit;color:var(--text);}
+input.cf-dur::placeholder{color:var(--text-dim);}
 input.cf-dur:focus{outline:none;}
+/* Same collision as the finish screen: a caps section label sitting directly on a field's own caps
+   label reads as one run-on line. They are the same size, weight and colour — the gap separates them. */
+.ql-label + .figrow,.ql-label + .rpe-row{margin-top:var(--sp-3);}
+.figrow{align-items:flex-end;}
 .wm-timer .lbl{display:block;font-size:var(--fs-caption);font-weight:600;color:var(--text-dim);
   text-transform:uppercase;letter-spacing:.08em;}
 .wm-timer .t{display:block;font-size:var(--fs-hero);font-weight:600;letter-spacing:-.045em;
@@ -780,7 +813,7 @@ const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3A
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-10-10 23:13';
+const APP_BUILD = '2026-10-10 23:28';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -2301,6 +2334,44 @@ function cardTogglesHtml(){
     <div class="switch ${cardHidden(c.id) ? '' : 'on'}" onclick="setCardHidden('${esc(c.id)}', ${!cardHidden(c.id)})"><div class="knob"></div></div>
   </div>`).join('');
 }
+// Which set the lifting view is showing large. Defaults to the first one with nothing logged, so the
+// screen follows you down the sets without being told; tapping a completed row pins it here instead.
+// In memory only, like openCards and exercisePageIndex.
+let liftingEditSet = {};
+// A placeholder of "0" on a set whose predecessors were 92.5 reads as a suggestion to lift nothing.
+// Hint with the last weight actually logged for this exercise. A PLACEHOLDER, never a value: the app
+// must not record a number Simar did not enter, which is the rule the pre-fill already follows.
+function lastLoggedInRow(sets, isHold){
+  for(let i = sets.length - 1; i >= 0; i--){
+    const s = sets[i] || {};
+    const v = isHold ? s.seconds : s.weight;
+    if(v != null && v !== '') return String(v);
+  }
+  return '0';
+}
+function currentLiftingSet(key, rowKey, sets, setCount, isHold){
+  const pinned = liftingEditSet[rowKey];
+  if(pinned != null && pinned >= 0 && pinned < setCount) return pinned;
+  for(let i = 0; i < setCount; i++){
+    const s = sets[i] || {};
+    const filled = isHold ? (s.seconds != null && s.seconds !== '')
+                          : (s.weight  != null && s.weight  !== '');
+    if(!filled) return i;
+  }
+  return setCount - 1;   // all logged: stay on the last, so it can still be corrected
+}
+// Read-only: measures what the field holds and sets its width, so the unit sits beside the number
+// rather than at the far edge of an input box sized for twenty characters.
+function sizeBigSetInputs(root){
+  (root || document).querySelectorAll('.bigset-n').forEach(el=>{
+    const n = String(el.value || el.placeholder || '0').length;
+    el.style.width = Math.max(1, n) + 'ch';
+  });
+}
+function editLiftingSet(rowKey, i){
+  liftingEditSet[rowKey] = i;
+  renderWorkoutMode();
+}
 function renderExerciseBlock(ex, key, week){
 // idx was a closure variable in renderToday; derived here instead so this is callable from
 // anywhere — which is what lets workout mode reuse it rather than keeping a second copy.
@@ -2321,6 +2392,10 @@ const idx = ({'Wk1-2':0,'Wk3-4':1})[blockFor(key, week)] ?? 2;
   // (Barbell Squat -> Goblet Squat, Depth Jump -> Box Jump) already have distinct names/links above,
   // so they fall into the "different" branch below unchanged.
   const sameExercise = gymEx === homeEx;
+  // True only inside the workout overlay, and not on its finish screen. The Today card renders the
+  // identical block with the full stacked set form.
+  const isLifting = !!(workoutMode && !workoutMode.finishing
+                       && workoutMode.key === key && workoutMode.week === week);
   return `<div class="exrow">
     <div class="exname">${slot}${sup?' &middot; Superset '+sup:''} — ${sameExercise ? esc(gymEx) : esc(gymEx)+' / '+esc(homeEx)}${isPR?' <span style="color:var(--success)">&#127881; Personal best</span>':''}
       &nbsp;${sameExercise ? `<a class="demo" data-title="${esc(gymEx)}" href="${gymLink}" target="_blank" rel="noopener">watch&#9654;</a>`
@@ -2334,6 +2409,59 @@ const idx = ({'Wk1-2':0,'Wk3-4':1})[blockFor(key, week)] ?? 2;
     ${Array.from({length:setCount},(_,i)=>{
       const s = sets[i] || {};
       const prevSet = prevSetFor(key, slot, week, i);
+      // ---- Lifting view (workout mode only) -------------------------------------------------
+      // One set at a time: the working number fills the screen, sets already done collapse to rows
+      // you can tap back into, and sets not yet reached are implied by "set N of M". The Today card
+      // keeps the full stacked form — there you are reviewing, not standing over a bar. Everything
+      // around the sets (name, clips, the gym/home picker, notes, the completed toggle) is shared
+      // markup below, so nothing is lost by this branch.
+      if(isLifting){
+        const cur = currentLiftingSet(key, rowKey, sets, setCount, isHold);
+        if(i !== cur){
+          const filled = isHold ? (s.seconds != null && s.seconds !== '')
+                                : (s.weight  != null && s.weight  !== '');
+          if(!filled) return '';
+          const detail = isHold ? `${esc(s.seconds)}s`
+                                : `${esc(s.weight)} × ${esc(s.reps ?? '')}`;
+          return `<button type="button" class="donerow" onclick="editLiftingSet('${esc(rowKey)}',${i})">
+            <span>Set ${i+1}</span><span class="n">${detail}</span></button>`;
+        }
+        const restBtnIdL = 'rest-btn-'+rowKey+'-'+i;
+        if(isHold){
+          const compositeKeyL = rowKey+'_'+i;
+          const psL = prefillValue(s.seconds, prevSet, 'seconds');
+          return `<div class="bigset">
+            <div class="bigset-head"><span>Set ${i+1} of ${setCount}</span><span>Target ${esc(targets[1])}</span></div>
+            <div class="bigset-fig">
+              <input class="bigset-n ${psL.prefilled?'prefilled':''}" type="number" step="1" inputmode="numeric"
+                     ${psL.prefilled?'data-prefill="1"':''}
+                     data-k="${key}" data-row="${rowKey}" data-set="${i}" data-f="seconds"
+                     value="${esc(psL.value)}" placeholder="${esc(lastLoggedInRow(sets,true))}" aria-label="Seconds held">
+              <span class="bigset-unit">s</span>
+            </div>
+            <span id="wraphold-${compositeKeyL}">${holdTimerHtml(rowKey, key, i)}</span>
+          </div>`;
+        }
+        const pwL = prefillValue(s.weight, prevSet, 'weight');
+        const prL = prefillValue(s.reps,   prevSet, 'reps');
+        return `<div class="bigset">
+          <div class="bigset-head"><span>Set ${i+1} of ${setCount}</span><span>Target ${esc(targets[1])}</span></div>
+          <div class="bigset-fig">
+            <input class="bigset-n ${pwL.prefilled?'prefilled':''}" type="number" step="0.5" inputmode="decimal"
+                   ${pwL.prefilled?'data-prefill="1"':''} data-k="${key}" data-row="${rowKey}"
+                   data-set="${i}" data-f="weight" value="${esc(pwL.value)}" placeholder="${esc(lastLoggedInRow(sets,false))}" aria-label="Weight in kilograms">
+            <span class="bigset-unit">kg</span>
+          </div>
+          <div class="bigset-reps">
+            <input class="bigset-r ${prL.prefilled?'prefilled':''}" type="number" step="1" inputmode="numeric"
+                   ${prL.prefilled?'data-prefill="1"':''} data-k="${key}" data-row="${rowKey}"
+                   data-set="${i}" data-f="reps" value="${esc(prL.value)}" placeholder="0" aria-label="Reps">
+            <span class="bigset-unit">reps</span>
+          </div>
+          ${restSeconds!=null ? `<span id="wrap-${restBtnIdL}">${restTimerHtml(restBtnIdL, restSeconds)}</span>` : ''}
+        </div>`;
+      }
+      // ---- Today card view (unchanged) ------------------------------------------------------
       if(isHold){
         const compositeKey = rowKey+'_'+i;
         return `<div class="setrow">
@@ -2610,7 +2738,7 @@ function renderConfirm(el){
       <div class="ql-label">How long</div>
       <div class="subject-fig" style="margin-top:var(--sp-2)">
         <input class="subject-n cf-dur" type="number" inputmode="numeric" data-k="${t.k}" data-row="${esc(t.row)}"
-               data-f="${t.dur}" value="${esc(dur)}" aria-label="Duration in minutes">
+               data-f="${t.dur}" value="${esc(dur)}" placeholder="0" aria-label="Duration in minutes">
         <span class="subject-unit">min</span>
       </div>
       <div class="toolbar" style="margin-top:var(--sp-3)">
@@ -2637,6 +2765,11 @@ function renderConfirm(el){
       <button type="button" class="ql-go" onclick="commitConfirm()">Log ${esc((row.short||row.label).toLowerCase())}</button>
     </div>`;
   wireCard(el);
+  // A number input keeps its box width whatever it holds, so at display size the unit ends up
+  // stranded a long way from a two-digit value. Size it to the content at render; the nudge buttons
+  // re-render, so it stays in step. Read-only measurement, nothing written.
+  const d = el.querySelector('.cf-dur');
+  if(d) d.style.width = Math.max(1, String(d.value || d.placeholder || '').length) + 'ch';
 }
 // Saving lands on the card, which carries every field this screen leaves out.
 function commitConfirm(){
@@ -2822,6 +2955,7 @@ function renderWorkoutMode(){
   el.hidden = false;
   updateWorkoutTimerStrip();
   wireCard(el);       // without this the inputs render but never save
+  sizeBigSetInputs(el);
   wireCarousels(el);  // swipe gestures + initial sizing
 }
 
