@@ -75,6 +75,9 @@
   --danger:#B42318; --danger-dim:#FCE9E7;
   --warn:#8A5A00; --warn-dim:#FBF0DA;
   --link:#1F5BD0;
+  /* Modal scrim. A fixed navy wash works on a white page; on a near-black one it is invisible and
+     the dialog floats with nothing behind it. Tokenised so each theme can set its own. */
+  --scrim:rgba(11,18,32,.72);
   /* Ink that sits ON a saturated fill — status chips, the toolbar buttons, the Start workout
      button. White is correct on the LIGHT theme, whose fills are dark (#0B6E6E accent, #17693F
      success). Every dark-theme fill is LIGHTER than its light counterpart, so white inverts from
@@ -143,6 +146,7 @@
   --danger:#FF6B61;  --danger-dim:#331A19;    /* --sg-critical / tint */
   --warn:#D99A2B;    --warn-dim:#2C2211;      /* --sg-warning / tint */
   --link:#5B8DEF;        /* --sg-data-blue  6.0:1 on base */
+  --scrim:rgba(0,0,0,.78);   /* near-black: the dark card is lighter than the page, not darker */
   --ink-on-fill:#080E1A;    /* see the note on --ink-on-fill in the light block */
 }}
 :root[data-theme="dark"]{
@@ -152,7 +156,7 @@
   --success:#2FB983; --success-dim:#0F2A21;
   --danger:#FF6B61; --danger-dim:#331A19;
   --warn:#D99A2B; --warn-dim:#2C2211;
-  --link:#5B8DEF; --ink-on-fill:#080E1A;
+  --link:#5B8DEF; --scrim:rgba(0,0,0,.78); --ink-on-fill:#080E1A;
 }
 /* The product accent cannot be reused across themes: #0B6E6E is 3.1:1 on the dark base and fails.
    #2AA3A0 is the measured dark value, 5.0:1 on the card — the worst ground it is allowed on. */
@@ -217,7 +221,7 @@ input.prefilled{color:var(--text-dim);}
 #video-modal{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
   padding:calc(var(--sp-4) + env(safe-area-inset-top,0px)) calc(var(--sp-4) + env(safe-area-inset-right,0px))
           calc(var(--sp-4) + env(safe-area-inset-bottom,0px)) calc(var(--sp-4) + env(safe-area-inset-left,0px));}
-.vm-backdrop{position:absolute;inset:0;background:rgba(11,18,32,.72);}
+.vm-backdrop{position:absolute;inset:0;background:var(--scrim);}
 .vm-box{position:relative;width:100%;max-width:720px;background:var(--surface);border:1px solid var(--border);
   padding:var(--sp-3);max-height:90vh;overflow:auto;}
 .vm-bar{display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-3);}
@@ -426,6 +430,27 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
 .fin-unit{font-size:var(--fs-head);font-weight:600;color:var(--text-dim);}
 .fin-note{margin-top:var(--sp-3);font-size:var(--fs-ui);color:var(--text-dim);}
 .fin-hint{margin-top:var(--sp-2);font-size:var(--fs-caption);color:var(--text-dim);}
+.figfield{flex:1 1 0;min-width:0;}
+.figfield label{display:block;font-size:var(--fs-caption);color:var(--text-dim);text-transform:uppercase;
+  font-weight:600;letter-spacing:.08em;}
+.figwrap{display:flex;align-items:baseline;gap:var(--sp-1);border-bottom:1px solid var(--border);
+  padding-bottom:var(--sp-2);margin-top:var(--sp-2);}
+.figwrap input{flex:1 1 auto;min-width:0;width:100%;background:transparent;border:0;padding:0;
+  font-size:var(--fs-display);font-weight:600;color:var(--text);font-family:inherit;
+  font-variant-numeric:tabular-nums;}
+.figwrap input:focus{outline:none;}
+.figfield:focus-within .figwrap{border-bottom-color:var(--text);}
+.figunit{flex-shrink:0;font-size:var(--fs-caption);color:var(--text-dim);}
+.figrow{display:flex;gap:var(--sp-4);margin-top:var(--sp-2);}
+.rpe-row{display:flex;gap:var(--sp-2);margin-top:var(--sp-3);}
+.rpe-pill{flex:1 1 0;min-height:52px;background:transparent;border:1px solid var(--border);
+  color:var(--text-dim);font-family:inherit;font-size:var(--fs-ui);font-weight:600;cursor:pointer;}
+/* Selection by border and ink, not by the accent: the accent is spent once per screen and that one
+   place is the commit button. Same rule the quick-log tiles follow. */
+.rpe-pill.sel{border-color:var(--text);border-width:2px;color:var(--text);background:var(--surface);}
+input.cf-dur{background:transparent;border:0;padding:0;width:auto;max-width:4ch;font-family:inherit;
+  color:var(--text);}
+input.cf-dur:focus{outline:none;}
 .wm-timer .lbl{display:block;font-size:var(--fs-caption);font-weight:600;color:var(--text-dim);
   text-transform:uppercase;letter-spacing:.08em;}
 .wm-timer .t{display:block;font-size:var(--fs-hero);font-weight:600;letter-spacing:-.045em;
@@ -522,6 +547,19 @@ nav.bottomnav button.active::after{content:'';position:absolute;top:6px;left:50%
 .statrow span:first-child{color:var(--text-dim);}
 .statrow .n{font-variant-numeric:tabular-nums;}
 .statrow:last-child{border-bottom:none;}
+/* Supplement stock: name, count, action, on one hairline row. Was a stacked .exrow carrying a
+   nine-property inline style on its button — the kind of one-off that put 101 font sizes in this
+   file the first time. Low stock stays --warn and not --danger: running out IS a decision, but it is
+   a shopping decision rather than an alarm. */
+.stockrow{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) 0;
+  border-bottom:1px solid var(--border);}
+.stockrow:last-child{border-bottom:none;}
+.stockname{flex:1 1 auto;min-width:0;font-size:var(--fs-ui);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;}
+.stockn{font-size:var(--fs-ui);font-weight:700;font-variant-numeric:tabular-nums;flex-shrink:0;}
+.stockbtn{flex-shrink:0;width:auto;min-height:44px;padding:var(--sp-2) var(--sp-4);
+  font-size:var(--fs-ui);font-weight:700;font-family:inherit;background:var(--surface2);
+  color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;}
 /* The stat grid is gone (restyle stage 3) and `.value` has exactly one user left: the BMI figure,
    which is a secondary figure and so sits on --fs-display. It previously took its size from
    `.stat-cards .value`; without this rule it would have silently fallen back to inherited body text. */
@@ -567,6 +605,12 @@ nav.bottomnav button.active::after{content:'';position:absolute;top:6px;left:50%
   font-size:var(--fs-ui);color:var(--accent-text);margin-bottom:var(--sp-3);}
 a.demo{color:var(--link);}
 h2{font-size:var(--fs-head);margin:0 0 var(--sp-3);font-weight:800;color:var(--accent-text);}
+/* Panel hierarchy, after the four-step scale (restyle stage 5). A section heading was carrying an
+   inline --fs-ui, which left it SMALLER than the card headers inside it and smaller than the panel
+   title above it — the containment read backwards. With four steps there is no size left to put
+   between them, so the top of the hierarchy is carried by weight, which is what the scale intends:
+   panel title 21/800, section headings and card headers 21/700, body 16, labels 12. */
+h3.sect-h{font-size:var(--fs-head);font-weight:700;margin:var(--sp-5) 0 var(--sp-2);}
 ol.mob-ol{margin:0;padding-left:var(--sp-4);font-size:var(--fs-ui);line-height:1.9;}
 table.ref-table{width:100%;border-collapse:collapse;font-size:var(--fs-ui);background:var(--surface);border-radius:var(--radius-sm);
   overflow:hidden;border:1px solid var(--border);}
@@ -736,7 +780,7 @@ const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3A
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-10-10 23:04';
+const APP_BUILD = '2026-10-10 23:13';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -1718,6 +1762,14 @@ function setDayPick(week, dayIndex, val){
   renderToday();
 }
 
+// A field rendered as a display FIGURE rather than a boxed input: caps label, the value on the
+// secondary-figure step, a unit beside it, sitting on a hairline. Used where the number is the point
+// and the box is noise — the watch readings on the confirm and finish screens. It is still a real
+// <input>, so the number pad opens on the field you tapped and nothing about the wiring changes.
+function figFieldHtml(label, inputHtml, unit){
+  return `<div class="figfield"><label>${esc(label)}</label>` +
+    `<div class="figwrap">${inputHtml}${unit ? `<span class="figunit">${esc(unit)}</span>` : ''}</div></div>`;
+}
 function fieldHtml(label, inputHtml){
   return `<div class="field"><label>${esc(label)}</label>${inputHtml}</div>`;
 }
@@ -2449,6 +2501,7 @@ function openQuickLog(){
 }
 function closeQuickLog(){
   quickSelection = null;
+  confirmFor = null;
   document.body.classList.remove('in-quicklog');
   const el = document.getElementById('quick-log');
   el.hidden = true;
@@ -2460,6 +2513,14 @@ function selectQuickTile(id){
 }
 // Commit. Strength opens workout mode, because logging a lift as "60 minutes" throws away the sets.
 // Everything else sets today's pick and lands on the card that was already there, open.
+// From the GRID this now opens the confirm screen for anything with numbers to enter. Strength goes
+// straight to workout mode (its numbers are sets, not a duration) and Mobility is a tick list.
+function proceedFromGrid(){
+  if(!quickSelection) return;
+  const row = ACTIVITIES.find(a => a.id === quickSelection);
+  if(row && row.kind !== 'strength'){ openConfirm(quickSelection); return; }
+  commitQuickLog();
+}
 function commitQuickLog(){
   if(!quickSelection) return;
   const id = quickSelection, info = weekInfoFor(startOfDay(new Date()));
@@ -2481,9 +2542,114 @@ function commitQuickLog(){
   if(c && c.scrollIntoView) c.scrollIntoView({block:'start'});
 }
 
+/* ================= CONFIRM =================
+ * The second tap of the quick log. A STATE of that overlay, like Finish is a state of workout mode,
+ * so there is never a moment with two overlays stacked.
+ *
+ * It writes to exactly the buckets the Today card writes to, through the same data-k/data-row/data-f
+ * wiring — so this is a different PRESENTATION of fields that already existed, never a second copy of
+ * the data. Saving lands on the card, which still carries everything this screen leaves out
+ * (opponent, result, notes, the completed toggle): the quick path stays quick and nothing is lost.
+ */
+let confirmFor = null;            // the activity id being confirmed, or null
+const RPE_BUCKETS = [
+  { label:'Easy',   value:3 },
+  { label:'Steady', value:5 },
+  { label:'Hard',   value:7 },
+  { label:'Max',    value:9 },
+];
+// Where this activity's numbers live. One place that answers it, so the confirm screen and the card
+// can never drift onto different buckets.
+function confirmTargetFor(id){
+  const row = ACTIVITIES.find(a => a.id === id);
+  const info = weekInfoFor(startOfDay(new Date()));
+  if(!row || !info.inProgram) return null;
+  if(row.kind === 'cardio'){
+    return { k:'cardio', row:`${info.week}_${id}`, dur:'dur', dist:'dist', hr:'hr', rpe:'rpe',
+             cal:null, label:row.label };
+  }
+  return { k:'activity', row:`${info.week}_${info.dayIndex}`, dur:'duration', dist:'distance',
+           hr:'hr', rpe:'rpe', cal:'calories', label:row.label };
+}
+// Distance only where the activity moves through space (Simar's decision 4, 10 Oct). A blank distance
+// on a padel court invites an answer that means nothing.
+const MOVES_THROUGH_SPACE = ['Steady','Sprint / COD','Interval','Walk','Football','Hockey Training','Hockey Match'];
+function openConfirm(id){ confirmFor = id; renderQuickLog(); }
+function closeConfirm(){ confirmFor = null; renderQuickLog(); }
+function nudgeDuration(delta){
+  const t = confirmTargetFor(confirmFor);
+  if(!t) return;
+  const rec = DATA[t.k][t.row] = DATA[t.k][t.row] || {};
+  const cur = parseInt(rec[t.dur], 10) || 0;
+  rec[t.dur] = String(Math.max(0, cur + delta));
+  save();
+  renderQuickLog();
+}
+function setConfirmRpe(v){
+  const t = confirmTargetFor(confirmFor);
+  if(!t) return;
+  const rec = DATA[t.k][t.row] = DATA[t.k][t.row] || {};
+  rec[t.rpe] = (String(rec[t.rpe]) === String(v)) ? '' : String(v);
+  save();
+  renderQuickLog();
+}
+function renderConfirm(el){
+  const id = confirmFor, t = confirmTargetFor(id);
+  if(!t){ closeConfirm(); return; }
+  const row = ACTIVITIES.find(a => a.id === id);
+  const rec = DATA[t.k][t.row] || {};
+  const dur = rec[t.dur] !== undefined && rec[t.dur] !== '' ? rec[t.dur] : (usualDurationFor(id) ?? '');
+  const showDist = MOVES_THROUGH_SPACE.includes(id);
+  const curRpe = String(rec[t.rpe] ?? '');
+  el.innerHTML = `<div class="ql-head">
+      <span class="ql-title">${esc(row.short || row.label)}</span>
+      <span class="ql-date">Today</span>
+      <button class="linkbtn" onclick="closeConfirm()">Back</button>
+    </div>
+    <div class="ql-body">
+      <div class="ql-label">How long</div>
+      <div class="subject-fig" style="margin-top:var(--sp-2)">
+        <input class="subject-n cf-dur" type="number" inputmode="numeric" data-k="${t.k}" data-row="${esc(t.row)}"
+               data-f="${t.dur}" value="${esc(dur)}" aria-label="Duration in minutes">
+        <span class="subject-unit">min</span>
+      </div>
+      <div class="toolbar" style="margin-top:var(--sp-3)">
+        <button type="button" class="secondary" onclick="nudgeDuration(-15)">&minus;15</button>
+        <button type="button" class="secondary" onclick="nudgeDuration(15)">+15</button>
+      </div>
+
+      <div class="ql-label" style="margin-top:var(--sp-5)">From your watch</div>
+      <div class="figrow">
+        ${t.cal ? figFieldHtml('Calories', `<input type="number" inputmode="numeric" data-k="${t.k}" data-row="${esc(t.row)}" data-f="${t.cal}" value="${esc(rec[t.cal]??'')}">`, 'kcal') : ''}
+        ${showDist ? figFieldHtml('Distance', `<input type="number" inputmode="decimal" step="0.1" data-k="${t.k}" data-row="${esc(t.row)}" data-f="${t.dist}" value="${esc(rec[t.dist]??'')}">`, 'km') : ''}
+        ${figFieldHtml('Avg HR', `<input type="number" inputmode="numeric" data-k="${t.k}" data-row="${esc(t.row)}" data-f="${t.hr}" value="${esc(rec[t.hr]??'')}">`, 'bpm')}
+      </div>
+      <div class="fin-hint">Leave anything blank if you did not check.${showDist ? '' : ' No distance: this one covers no ground.'}</div>
+
+      <div class="ql-label" style="margin-top:var(--sp-5)">How hard did it feel</div>
+      <div class="rpe-row">
+        ${RPE_BUCKETS.map(b=>`<button type="button" class="rpe-pill ${curRpe===String(b.value)?'sel':''}"
+          onclick="setConfirmRpe(${b.value})">${esc(b.label)}</button>`).join('')}
+      </div>
+      <div class="fin-hint">Recorded as ${esc(RPE_BUCKETS.map(b=>b.label+' '+b.value).join(' · '))} on the same 0-10 scale as before.</div>
+    </div>
+    <div class="ql-foot">
+      <button type="button" class="ql-go" onclick="commitConfirm()">Log ${esc((row.short||row.label).toLowerCase())}</button>
+    </div>`;
+  wireCard(el);
+}
+// Saving lands on the card, which carries every field this screen leaves out.
+function commitConfirm(){
+  const id = confirmFor;
+  confirmFor = null;
+  quickSelection = id;
+  commitQuickLog();
+}
+
 function renderQuickLog(){
   const el = document.getElementById('quick-log');
   if(!el || el.hidden) return;
+  if(confirmFor){ renderConfirm(el); return; }
   const today = startOfDay(new Date());
   const info = weekInfoFor(today);
   const stepRec = DATA.steps[`${info.week}_${info.dayIndex}`] || {};
@@ -2516,7 +2682,7 @@ function renderQuickLog(){
       </div>
     </div>
     <div class="ql-foot">
-      <button type="button" class="ql-go" ${sel?'':'disabled'} onclick="commitQuickLog()">${
+      <button type="button" class="ql-go" ${sel?'':'disabled'} onclick="proceedFromGrid()">${
         sel ? (isStrength ? 'Start ' + esc(selRow.short) : 'Log ' + esc((selRow.short||'').toLowerCase())) : 'Pick one'
       }</button>
     </div>`;
@@ -2859,6 +3025,9 @@ function renderToday(){
       <div class="row2">
         ${fieldHtml('Avg heart rate (bpm)', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="hr" value="${esc(rec.hr??'')}">`)}
         ${fieldHtml('Duration (min)', `<input type="number" data-k="activity" data-row="${dayKey}" data-f="duration" value="${esc(rec.duration??'')}">`)}
+      </div>
+      <div class="row2">
+        ${fieldHtml('RPE (0-10)', `<input type="number" min="0" max="10" data-k="activity" data-row="${dayKey}" data-f="rpe" value="${esc(rec.rpe??'')}">`)}
       </div>
       ${todayType===NAMED_ACTIVITY ? fieldHtml('What was it?', `<input data-k="activity" data-row="${dayKey}" data-f="name" value="${esc(rec.name||'')}" placeholder="e.g. climbing, yoga, swim">`) : ''}
       ${todayType==='Hockey Match' ? `
@@ -4293,7 +4462,10 @@ function renderStrengthChart(key,slot){
  * that resets on every launch, which would defeat the point of collapsing anything.
  */
 const DASH_OPEN_KEY = 'hockey_tracker_dashopen';
-const DASH_DEFAULT_OPEN = ['Training Calendar'];
+// 'Totals' joins the default (stage 6): the twelve demoted figures are the Dashboard's supporting
+// evidence, and the drawn design shows them open beneath the subject. Collapsing them by default
+// hid the very rows the demotion was supposed to make readable.
+const DASH_DEFAULT_OPEN = ['Totals', 'Training Calendar'];
 let dashOpenCache = null;
 function dashOpenSet(){
   if(dashOpenCache) return dashOpenCache;
@@ -4725,31 +4897,29 @@ function renderPlan(){
       ${fieldHtml('Notes', `<textarea data-k="injury" data-row="${injKey}" data-f="notes">${esc(injRec.notes||'')}</textarea>`)}
     </div>`;
   panel.innerHTML = `<h2>Plan</h2>
-  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Daily mobility routine</h3>
+  <h3 class="sect-h">Daily mobility routine</h3>
   <div class="note">The routine now lives on Today, where you tick each stretch off as you go &mdash; reps and demo clips are on the card itself.</div>
-  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Plate calculator</h3>
+  <h3 class="sect-h">Plate calculator</h3>
   <div class="card">
     <div class="field"><label>Bar weight (kg)</label><input type="number" step="0.5" value="${esc(DATA.settings.barKg??20)}" onchange="setBarKg(this.value)"></div>
     <div class="field"><label>Target weight (kg)</label><input type="number" step="0.5" id="plate-target" oninput="onPlateCalcInput()" placeholder="e.g. 60"></div>
     <div id="plate-result"></div>
     <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-top:var(--sp-2)">Assumes a standard plate set (25/20/15/10/5/2.5/1.25/0.5kg). Doesn't know your actual gym or home plates — treat the breakdown as a starting guess, not gospel.</div>
   </div>
-  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Supplement stock</h3>
+  <h3 class="sect-h">Supplement stock</h3>
   <div class="card">
     <div style="font-size:var(--fs-ui);color:var(--text-dim);margin-bottom:var(--sp-3)">Pill count for capsule/tablet/softgel supplements only — protein, creatine, the Vit C dose and the collagen peptide are powders/scoops, not tracked here. Assumes a fresh ${PILL_BOTTLE_SIZE}-count bottle; tap Restock when you open a new one.</div>
     ${PILL_STOCK_ITEMS.map(item=>{
       const remaining = remainingStock(item.id);
       const low = remaining <= 10;
-      return `<div class="exrow">
-        <div class="exname">${esc(item.label)}</div>
-        <div class="extarget" style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)">
-          <span style="font-size:var(--fs-ui);font-weight:700;color:${low?'var(--warn)':'var(--text)'}">${remaining} left</span>
-          <button type="button" onclick="restockItem('${item.id}')" style="width:auto;padding:var(--sp-2) var(--sp-4);font-size:var(--fs-ui);font-weight:700;font-family:inherit;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm)">Restock (${PILL_BOTTLE_SIZE})</button>
-        </div>
+      return `<div class="stockrow">
+        <div class="stockname">${esc(item.label)}</div>
+        <span class="stockn"${low?' style="color:var(--warn)"':''}>${remaining} left</span>
+        <button type="button" class="stockbtn" onclick="restockItem('${item.id}')">Restock (${PILL_BOTTLE_SIZE})</button>
       </div>`;
     }).join('')}
   </div>
-  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Log a niggle or injury</h3>
+  <h3 class="sect-h">Log a niggle or injury</h3>
   <p style="font-size:var(--fs-caption);color:var(--text-dim);margin:0 0 8px">Logged against today, ${esc(fmtDate(startOfDay(new Date())))}.</p>
   ${injSection}`;
   wireCard(panel);
@@ -4813,16 +4983,16 @@ function renderSettings(){
   const panel = document.getElementById('panel-settings');
   panel.innerHTML = `<h2>Settings</h2>
   <div class="note">Add this page to your Home Screen (Safari share icon &rarr; "Add to Home Screen") so it opens full-screen like an app.</div>
-  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Appearance</h3>
+  <h3 class="sect-h">Appearance</h3>
   <div class="card">
     <div style="font-size:var(--fs-ui);color:var(--text-dim);margin-bottom:var(--sp-3)">System follows your phone’s own setting.</div>
     ${themePickerHtml()}
   </div>
 
-  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Cloud sync</h3>
+  <h3 class="sect-h">Cloud sync</h3>
   <div class="card">${cloudCardHtml()}</div>
 
-  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Training mode</h3>
+  <h3 class="sect-h">Training mode</h3>
   <div class="card">
     ${isProgramMode()
       ? `<div style="font-size:var(--fs-ui);color:var(--text-dim);margin-bottom:var(--sp-3)">Running the ${esc(String((activeProgramRun()||{}).weeks||''))}-week program &mdash; ${esc(String(((programWeekFor(new Date())||{}).week)||1))} of ${esc(String((activeProgramRun()||{}).weeks||''))}. Ending it changes nothing you have logged: rep schemes simply go back to advancing on sessions you complete.</div>
@@ -4834,13 +5004,13 @@ function renderSettings(){
          </div>`}
   </div>
 
-  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Daily cards</h3>
+  <h3 class="sect-h">Daily cards</h3>
   <div class="card">
     <div style="font-size:var(--fs-ui);color:var(--text-dim);margin-bottom:var(--sp-3)">Switch off anything you do not use and Today stops asking for it. Nothing already logged is deleted &mdash; switch it back on and the history is still there.</div>
     ${cardTogglesHtml()}
   </div>
 
-  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">App updates</h3>
+  <h3 class="sect-h">App updates</h3>
   <div class="card">
     <div style="font-size:var(--fs-ui);color:var(--text-dim);margin-bottom:var(--sp-3)">This is a home-screen app with no browser bar to pull-to-refresh — after Simar pushes a code change, tap below to force-fetch the latest version. Safe any time: it only clears the app's cached files, never your logged data.</div>
     <div class="toolbar"><button onclick="forceRefresh()">Refresh app (get latest version)</button></div>
@@ -4849,7 +5019,7 @@ function renderSettings(){
       If this doesn't match the version you just uploaded, the phone is still on the old copy \u2014 tap Refresh above.
     </div>
   </div>
-  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Data</h3>
+  <h3 class="sect-h">Data</h3>
   <div class="toolbar">
     <button onclick="exportData()">Export backup</button>
     <button class="secondary" onclick="document.getElementById('import-file').click()">Import backup</button>
