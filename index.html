@@ -67,6 +67,13 @@
   --danger:#B42318; --danger-dim:#FCE9E7;
   --warn:#8A5A00; --warn-dim:#FBF0DA;
   --link:#1F5BD0;
+  /* Ink that sits ON a saturated fill — status chips, the toolbar buttons, the Start workout
+     button. White is correct on the LIGHT theme, whose fills are dark (#0B6E6E accent, #17693F
+     success). Every dark-theme fill is LIGHTER than its light counterpart, so white inverts from
+     comfortable to failing: measured in situ, white on the dark accent #2AA3A0 is 3.07:1. Dark ink
+     on the same fill is 6.2:1. The same flip applies to --accent, which on dark IS the ink colour,
+     so a white-on-accent button would have been white on near-white. */
+  --ink-on-fill:#FFFFFF;
 }
 /* SG product layer (assets/tokens/products.css, 26 Sep 2026). Simar's apps share one design system
    and are told apart by a product name plus ONE accent colour. Inlined rather than linked, for the
@@ -80,6 +87,71 @@
   --sg-accent-tint:#E4F1F1;
   --radius:0; --radius-sm:0;
 }
+
+/* ================= DARK THEME =================
+ * Nothing here is invented. Every value is the measured one from the brand's canonical
+ * assets/tokens/sg-dark.css (27 Sep 2026), MAPPED onto this app's own token names — the canonical
+ * file uses --sg-* names and this app has always carried its own shorter layer (--bg, --surface,
+ * --text), so a dark theme here is a mapping, not a paste. Each line names the canonical token it
+ * carries so the two can be checked against each other later.
+ *
+ * Three things that are easy to get backwards and are deliberate:
+ *   1. --surface2 is LIGHTER than --surface here, the reverse of the light theme. On a dark ground
+ *      a raised surface lifts; it does not sink.
+ *   2. --border takes --sg-line-strong, not --sg-line. Elevation on dark is only ~1.12:1 per step,
+ *      so structure is carried by the hairline rather than by the fill.
+ *   3. --text is #E8EDF5 and never #FFF, which blooms at text sizes on a dark ground.
+ *
+ * Both switches are required. The media query is guarded with :not([data-theme="light"]) so that
+ * someone who explicitly picks Light still gets light on a phone set to dark — without that guard
+ * the OS setting silently overrules their choice.
+ *
+ * The two blocks below MUST hold identical values; tests.html asserts that they have not drifted.
+ */
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ color-scheme: dark; } }
+:root[data-theme="dark"]{ color-scheme: dark; }
+
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#080E1A;          /* --sg-bg         the page */
+  --surface:#121B2C;     /* --sg-bg-raised  cards */
+  --surface2:#1B2539;    /* --sg-bg-card    fills INSIDE a card — lifts above it */
+  --border:#33415E;      /* --sg-line-strong */
+  --text:#E8EDF5;        /* --sg-ink        16.4:1 on base, 13.0:1 on card */
+  --text-dim:#A9B6CC;    /* --sg-slate      7.5:1 on card */
+  --text-faint:#7F8DA5;  /* --sg-muted      4.6:1 on card */
+  --accent:#E8EDF5;      /* --sg-navy       reversed to ink */
+  --accent-dim:#13203A;  /* --sg-info-tint */
+  --accent-text:#E8EDF5;
+  --success:#2FB983; --success-dim:#0F2A21;   /* --sg-good / tint */
+  --danger:#FF6B61;  --danger-dim:#331A19;    /* --sg-critical / tint */
+  --warn:#D99A2B;    --warn-dim:#2C2211;      /* --sg-warning / tint */
+  --link:#5B8DEF;        /* --sg-data-blue  6.0:1 on base */
+  --ink-on-fill:#080E1A;    /* see the note on --ink-on-fill in the light block */
+}}
+:root[data-theme="dark"]{
+  --bg:#080E1A; --surface:#121B2C; --surface2:#1B2539; --border:#33415E;
+  --text:#E8EDF5; --text-dim:#A9B6CC; --text-faint:#7F8DA5;
+  --accent:#E8EDF5; --accent-dim:#13203A; --accent-text:#E8EDF5;
+  --success:#2FB983; --success-dim:#0F2A21;
+  --danger:#FF6B61; --danger-dim:#331A19;
+  --warn:#D99A2B; --warn-dim:#2C2211;
+  --link:#5B8DEF; --ink-on-fill:#080E1A;
+}
+/* The product accent cannot be reused across themes: #0B6E6E is 3.1:1 on the dark base and fails.
+   #2AA3A0 is the measured dark value, 5.0:1 on the card — the worst ground it is allowed on. */
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"])[data-product="fit"]{
+  --sg-accent:#2AA3A0; --sg-accent-mark:#2AA3A0; --sg-accent-tint:#0E2A2A;
+}}
+:root[data-theme="dark"][data-product="fit"]{
+  --sg-accent:#2AA3A0; --sg-accent-mark:#2AA3A0; --sg-accent-tint:#0E2A2A;
+}
+/* Native controls: the app pinned these to light while it was a light-only app, which would now
+   leave a white date picker and white select popups sitting in a dark page. They follow the theme. */
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .jumprow select,
+                                     :root:not([data-theme="light"]) .field select{ color-scheme: dark; } }
+:root[data-theme="dark"] .jumprow select,
+:root[data-theme="dark"] .field select{ color-scheme: dark; }
+
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 /* Form controls do NOT inherit typography from the page — browsers give them their own default,
    which resolves to 13.3333px here: off the scale, and under the 16px iOS focus-zoom floor. This
@@ -98,7 +170,9 @@ header .brand{display:flex;align-items:center;gap:var(--sp-3);}
    "use below 48px" note. No navy tile behind it: the product layer makes the mark the constant
    across Simar's apps and the accent the variable, so the mark should read the same everywhere.
    The mark's own red dot is Dot Red and never recolours — it is part of the logo, not an accent. */
-header .logo{width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+/* The mark reverses with the theme: its letterforms are currentColor, so --accent carries them
+   (navy on light, ink on dark). The red dot inside the mark is NEVER recoloured. */
+header .logo{width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent);}
 header h1{margin:0;font-size:var(--fs-head);font-weight:800;letter-spacing:-0.01em;}
 header .sub{font-size:var(--fs-caption);color:var(--text-dim);margin-top:var(--sp-1);}
 main{padding:var(--sp-4) var(--sp-4) var(--sp-6);max-width:600px;margin:0 auto;}
@@ -228,6 +302,13 @@ details.card>summary:hover{background:var(--surface2);border-radius:var(--radius
 .exrow:first-child{border-top:none;padding-top:0;margin-top:0;}
 .exrow .exname{font-size:var(--fs-body);font-weight:700;}
 .exrow .extarget{font-size:var(--fs-caption);color:var(--text-dim);margin:var(--sp-1) 0 var(--sp-2);}
+/* "What did I lift last time" is the one number worth reading between sets, so it sits at the same
+   16px step as the input it is context FOR — not the 11.5px caption step it used to share with the
+   target line, which made the most useful figure on the card the second faintest thing on it. The
+   forward suggestion stays at caption: it is advice, not evidence. Neither is link-coloured any
+   more — nothing here is tappable, and --link on static text reads as a dead hyperlink. */
+.exrow .exlast{font-size:var(--fs-ui);font-weight:700;color:var(--text);margin:var(--sp-1) 0 0;}
+.exrow .exnext{font-size:var(--fs-caption);color:var(--text-dim);margin:0 0 var(--sp-2);}
 .exrow a.demo{font-size:var(--fs-caption);color:var(--link);text-decoration:none;font-weight:600;}
 .field{margin-bottom:var(--sp-3);}
 .field label{display:block;font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:var(--sp-1);font-weight:600;text-transform:uppercase;letter-spacing:.08em;}
@@ -353,7 +434,7 @@ nav.bottomnav button.active::after{content:'';position:absolute;top:6px;left:50%
 .chip-row{display:flex;gap:var(--sp-2);overflow-x:auto;margin-bottom:var(--sp-3);padding-bottom:var(--sp-1);}
 .chip{flex-shrink:0;padding:var(--sp-2) var(--sp-4);border-radius:20px;border:1px solid var(--border);background:var(--surface);
   font-size:var(--fs-body);font-weight:600;color:var(--text-dim);}
-.chip.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.chip.active{background:var(--accent);color:var(--ink-on-fill);border-color:var(--accent);}
 .hist-month{margin-bottom:var(--sp-2);}
 .hist-month summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--sp-3);
   font-size:var(--fs-body);font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;}
@@ -377,7 +458,7 @@ nav.bottomnav button.active::after{content:'';position:absolute;top:6px;left:50%
 .linkbtn{background:none;border:none;color:var(--link);font-family:inherit;
   font-size:var(--fs-caption);text-decoration:underline;padding:var(--sp-1) 0;cursor:pointer;}
 .toolbar{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-3);}
-.toolbar button{background:var(--accent);color:#fff;border:none;padding:var(--sp-3) var(--sp-4);border-radius:var(--radius-sm);font-size:var(--fs-body);font-weight:700;font-family:inherit;}
+.toolbar button{background:var(--accent);color:var(--ink-on-fill);border:none;padding:var(--sp-3) var(--sp-4);border-radius:var(--radius-sm);font-size:var(--fs-body);font-weight:700;font-family:inherit;}
 .toolbar button.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
 .toolbar button.danger{background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);}
 .note{background:var(--accent-dim);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:var(--sp-3);
@@ -401,7 +482,7 @@ table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:va
     <clipPath id="sR" clipPathUnits="userSpaceOnUse"><rect x="107" y="0" width="110" height="230"/></clipPath>
     <clipPath id="cT" clipPathUnits="userSpaceOnUse"><rect x="-30" y="125" width="160" height="110"/></clipPath>
   </defs>
-  <g fill="none" stroke="#15233F" stroke-width="22" stroke-linejoin="miter" stroke-linecap="butt">
+  <g fill="none" stroke="currentColor" stroke-width="22" stroke-linejoin="miter" stroke-linecap="butt">
     <g clip-path="url(#sL)">
       <path d="M110 31H69A32 32 0 0 0 46.37 85.63L110 149.26"/>
       <path clip-path="url(#cT)" d="M13.5 115L64.72 166.21A30 30 0 0 0 85.93 175H110"/>
@@ -410,7 +491,7 @@ table.ref-table th{background:var(--surface2);color:var(--text-dim);font-size:va
       <path d="M163 78V63A32 32 0 0 0 131 31H118V175H133A30 30 0 0 0 163 145V129"/>
     </g>
   </g>
-  <rect x="140" y="107" width="34" height="22" fill="#15233F"/>
+  <rect x="140" y="107" width="34" height="22" fill="currentColor"/>
   <circle cx="100" cy="134" r="12.5" fill="#E0202E"/>
 </svg></div>
     <div>
@@ -529,6 +610,18 @@ const FONT_MICRO   = '10px Barlow';    // --fs-micro: gridline values, "no data"
    if a chart ever gains a second series. */
 const SG_CHART = ['#1F5BD0','#1BAF7A','#4A3AA7','#EDA100','#E87BA4']; // Blue, Aqua, Violet, Amber, Pink
 const SG_CHART_CONTEXT = { axis:'#8995A9', grid:'#D5DBE5' };          // Muted, Line
+/* The dark palette is NOT the light one darkened, and that is the whole point of carrying it
+   separately. Series 3 is lifted further than a like-for-like conversion would put it: lightening
+   blue and violet together collapses them to dE 7, and the gap that survives colour blindness is
+   lightness. At #BE8EFC the blue/violet pair sits at dE 13.6 / dL 8.1 — wider than the light
+   palette manages for the same pair. Measured values from the brand's sg-dark.css, 27 Sep 2026. */
+const SG_CHART_DARK = ['#5B8DEF','#35C48C','#BE8EFC','#F0B640','#F095B8'];
+const SG_CHART_CONTEXT_DARK = { axis:'#7F8DA5', grid:'#25304A' };
+// Canvas cannot read a CSS custom property, so these are read through a function at DRAW time
+// rather than captured once at load — a const captured at load would be whatever the theme was
+// when the file parsed, and would never change again.
+function sgChart(){ return isDarkNow() ? SG_CHART_DARK : SG_CHART; }
+function sgChartContext(){ return isDarkNow() ? SG_CHART_CONTEXT_DARK : SG_CHART_CONTEXT; }
 // A highlighted mark uses the PRODUCT accent, never Dot Red — red belongs to SG Sports & Media now.
 // Unused so far: no chart marks its finding, so the accent's "one figure that matters" role is free.
 const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3AA7', wire:'#1F5BD0' };
@@ -537,7 +630,7 @@ const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3A
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-10-04 11:20';
+const APP_BUILD = '2026-10-10 20:45';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -2075,7 +2168,8 @@ const idx = ({'Wk1-2':0,'Wk3-4':1})[blockFor(key, week)] ?? 2;
       &nbsp;${sameExercise ? `<a class="demo" data-title="${esc(gymEx)}" href="${gymLink}" target="_blank" rel="noopener">watch&#9654;</a>`
         : `<a class="demo" data-title="${esc(gymEx)}" href="${gymLink}" target="_blank" rel="noopener">gym&#9654;</a> &middot; <a class="demo" data-title="${esc(homeEx)}" href="${homeLink}" target="_blank" rel="noopener">home&#9654;</a>`}</div>
     <div class="extarget">Target: ${targets[0]} x ${targets[1]}, rest ${targets[2]}</div>
-    ${suggestion ? `<div style="font-size:var(--fs-caption);color:var(--link);margin:-4px 0 8px">${suggestion.text}</div>` : ''}
+    ${suggestion ? `<div class="exlast">${suggestion.last}</div>
+    <div class="exnext">${suggestion.next}</div>` : ''}
     ${sameExercise ? '' : fieldHtml('Exercise used', `<select data-k="${key}" data-row="${rowKey}" data-f="used">
       <option value=""></option><option ${rec.used===gymEx?'selected':''}>${esc(gymEx)}</option>
       <option ${rec.used===homeEx?'selected':''}>${esc(homeEx)}</option></select>`)}
@@ -3288,9 +3382,9 @@ function mcalLegend(items){
 // Training status colours. --warn is the brand's warning token (#8A5A00, a dark amber rather than a
 // vivid orange) — the brand token is used deliberately in preference to a literal orange.
 const DAY_STATUS_STYLE = {
-  workout:  { bg:'var(--success)', fg:'#FFFFFF', label:'trained' },
-  mobility: { bg:'var(--warn)',    fg:'#FFFFFF', label:'mobility only' },
-  unwell:   { bg:'var(--danger)',  fg:'#FFFFFF', label:'injured / ill' },
+  workout:  { bg:'var(--success)', fg:'var(--ink-on-fill)', label:'trained' },
+  mobility: { bg:'var(--warn)',    fg:'var(--ink-on-fill)', label:'mobility only' },
+  unwell:   { bg:'var(--danger)',  fg:'var(--ink-on-fill)', label:'injured / ill' },
   none:     { bg:'var(--surface)', fg:'var(--text-dim)', label:'nothing logged' },
 };
 // Contract: return null when there is NOTHING to show for that day. The renderer then decides between
@@ -3324,7 +3418,7 @@ function stepsDayColor(date){
   const n = stepsFor(p.week, p.dayIndex);
   if(n === null) return null;                       // nothing logged -> blank, never red
   const bg = n >= STEP_GREEN ? 'var(--success)' : n > STEP_RED ? 'var(--warn)' : 'var(--danger)';
-  return { bg, fg:'#FFFFFF', title:`${ymd(date)} — ${n.toLocaleString()} steps` };
+  return { bg, fg:'var(--ink-on-fill)', title:`${ymd(date)} — ${n.toLocaleString()} steps` };
 }
 function renderStepsCalendar(){
   return renderMonthCalendar(stepsDayColor, mcalLegend([
@@ -3510,12 +3604,12 @@ function suggestNextLoad(key, slot, week){
     if(!best) continue;
     if(info.timeBased){
       if(best.seconds==null) continue;
-      return { prevWeek:w, text:`Last (Wk${w}): ${best.seconds}s held. Try ${Math.round(best.seconds+5)}s this week if that felt solid.` };
+      return { prevWeek:w, last:`Last (Wk${w}): ${best.seconds}s held`, next:`Try ${Math.round(best.seconds+5)}s if that felt solid` };
     }
     if(best.weight==null) continue;
     const bumped = Math.round((best.weight+2.5)/1.25)*1.25;
     const repsTxt = best.reps ? `${best.weight}kg&times;${best.reps}` : `${best.weight}kg`;
-    return { prevWeek:w, text:`Last (Wk${w}): ${repsTxt}. Try ${bumped}kg this week if that felt solid.` };
+    return { prevWeek:w, last:`Last (Wk${w}): ${repsTxt}`, next:`Try ${bumped}kg if that felt solid` };
   }
   return null;
 }
@@ -3724,7 +3818,7 @@ function renderDatedTests(){
     const rec = DATA.tests[todayKey] || {};
     const d = datedTestDelta(f.field, f.higherIsBetter);
     const deltaLine = d
-      ? `<div style="font-size:var(--fs-caption);color:${d.improved ? 'var(--success)' : 'var(--danger)'}">${esc(d.from)} &rarr; ${esc(d.to)}: ${d.delta>0?'+':''}${d.delta.toFixed(2)}${esc(f.unit)} &mdash; ${d.improved?'improved':'declined'}</div>`
+      ? `<div style="font-size:var(--fs-caption);color:${d.improved ? 'var(--success)' : 'var(--text-dim)'}">${esc(d.from)} &rarr; ${esc(d.to)}: ${d.delta>0?'+':''}${d.delta.toFixed(2)}${esc(f.unit)} &mdash; ${d.improved?'improved':'declined'}</div>`
       : '';
     return `<div class="field"><label>${esc(f.label)} (${esc(f.unit)})</label>
       <div style="font-size:var(--fs-caption);color:var(--text-dim);margin:0 0 var(--sp-2)">${esc(f.protocol)}</div>
@@ -3777,7 +3871,13 @@ function testDeltaHtml(field, unit, higherIsBetter){
   const lines = [1,2].map(cycle=>{
     const d = testDelta(field, higherIsBetter, cycle);
     if(!d) return '';
-    const color = d.improved ? 'var(--success)' : 'var(--danger)';
+    // A slower sprint is data, not a decision: red is never a verdict on a trend. Green stays,
+    // because for a BENCHMARK "improved" is a fact — the test has a better direction and the app
+    // knows which it is. That is what separates this from the Weight change tile, which lost its
+    // colour entirely: there, "improved" was an assumption about a goal the app cannot know.
+    // The word improved/declined below already carries the meaning, and does the real work for
+    // metrics where lower is better (a -0.2s sprint is an improvement).
+    const color = d.improved ? 'var(--success)' : 'var(--text-dim)';
     const relWk = w => w===TEST_CHECKPOINTS[cycle][0]?1 : w===TEST_CHECKPOINTS[cycle][1]?6 : 12;
     return `<div style="font-size:var(--fs-caption);color:${color}">Cycle ${cycle} — Wk1 &rarr; Wk${relWk(d.latestWeek)}: ${d.delta>0?'+':''}${d.delta.toFixed(2)}${unit} &mdash; ${d.improved?'improved':'declined'}</div>`;
   }).filter(Boolean);
@@ -3797,7 +3897,7 @@ function renderStrengthChart(key,slot){
   if(labelEl) labelEl.textContent = timeBased
     ? "Weight logged (kg) — timed hold, 1RM estimate doesn't apply"
     : "Estimated 1RM (kg) — Epley formula, using logged weight + that week's prescribed reps";
-  drawLineChart('strength-chart', weeks, values, SG_CHART[2]);
+  drawLineChart('strength-chart', weeks, values, sgChart()[2]);
 }
 
 /* ================= COLLAPSIBLE DASHBOARD SECTIONS =================
@@ -3870,11 +3970,11 @@ function drawDashCharts(){
   const weeks = recentWeeks(12);
   // Chart line colours follow the brand's fixed categorical order (never Dot Red — that's reserved for
   // a single highlighted finding, and these are plain trend lines with no one point being called out).
-  drawLineChart('bw-chart', weeks, weeks.map(w=>{ const r=DATA.body[String(w)]; return r&&r.weight!==undefined&&r.weight!=='' ? parseFloat(r.weight):null; }), SG_CHART[0]);
-  drawLineChart('dist-chart', weeks, weeks.map(w=>weeklyCardioDistance(w).total), SG_CHART[1]);
-  drawLineChart('rhr-chart', weeks, weeks.map(w=>{ const r=DATA.body[String(w)]; return r&&r.rhr!==undefined&&r.rhr!=='' ? parseFloat(r.rhr):null; }), SG_CHART[2]);
-  drawLineChart('readiness-chart', weeks, weeks.map(weeklyReadinessAvg), SG_CHART[1]);
-  drawLineChart('load-chart', weeks, weeks.map(weeklyTrainingLoad), SG_CHART[3]);
+  drawLineChart('bw-chart', weeks, weeks.map(w=>{ const r=DATA.body[String(w)]; return r&&r.weight!==undefined&&r.weight!=='' ? parseFloat(r.weight):null; }), sgChart()[0]);
+  drawLineChart('dist-chart', weeks, weeks.map(w=>weeklyCardioDistance(w).total), sgChart()[1]);
+  drawLineChart('rhr-chart', weeks, weeks.map(w=>{ const r=DATA.body[String(w)]; return r&&r.rhr!==undefined&&r.rhr!=='' ? parseFloat(r.rhr):null; }), sgChart()[2]);
+  drawLineChart('readiness-chart', weeks, weeks.map(weeklyReadinessAvg), sgChart()[1]);
+  drawLineChart('load-chart', weeks, weeks.map(weeklyTrainingLoad), sgChart()[3]);
   renderStrengthChart(selectedStrengthEx.key, selectedStrengthEx.slot);
 }
 function renderDashboard(){
@@ -3928,7 +4028,11 @@ function renderDashboard(){
     ${isProgramMode() ? `<div class="card"><div class="label">Strength done</div><div class="value">${w1.done+w2.done}/${w1.total+w2.total}</div></div>
     <div class="card"><div class="label">Cardio done</div><div class="value">${cardio.done}/${cardio.total}</div></div>` : ''}
     <div class="card"><div class="label">Distance</div><div class="value">${totalDist.toFixed(1)} km</div></div>
-    <div class="card"><div class="label">Weight change</div><div class="value" style="color:${bwChange==null?'var(--text)':(bwChange<0?'var(--success)':bwChange>0?'var(--danger)':'var(--text)')}">${bwChange==null?'—':(bwChange>0?'+':'')+bwChange.toFixed(1)+'kg'}</div></div>
+    <!-- Weight change carries NO colour. It used to paint a loss green and a gain red, which asserts
+         that down is good and up is bad — a verdict the app has no basis for. Simar is 46 and lifting
+         twice a week for masters hockey; 2kg on may well be muscle. The sign (+/-) still shows the
+         direction, which is the fact. Red is never a verdict on a trend. -->
+    <div class="card"><div class="label">Weight change</div><div class="value">${bwChange==null?'—':(bwChange>0?'+':'')+bwChange.toFixed(1)+'kg'}</div></div>
     <div class="card"><div class="label">Active injuries</div><div class="value" style="color:${injActive>0?'var(--danger)':'var(--text)'}">${injActive}</div></div>
     <div class="card"><div class="label">Missed to injury/illness</div><div class="value" style="color:${healthSkips>0?'var(--danger)':'var(--text)'}">${healthSkips}</div></div>
     <div class="card"><div class="label">Planned rest / busy</div><div class="value">${restSkips}</div></div>
@@ -4049,7 +4153,7 @@ function drawLineChart(canvasId, weeks, values, color){
 
   const nums = values.filter(v=>v!=null&&!isNaN(v)&&v!==0);
   if(nums.length===0){
-    ctx.fillStyle=SG_CHART_CONTEXT.axis; ctx.font=FONT_CAPTION; ctx.textAlign='center';
+    ctx.fillStyle=sgChartContext().axis; ctx.font=FONT_CAPTION; ctx.textAlign='center';
     ctx.fillText('No data logged yet', w/2, h/2+4);
     ctx.textAlign='left';
     return;
@@ -4062,7 +4166,7 @@ function drawLineChart(canvasId, weeks, values, color){
   // Pick label precision from the data's own scale so small values (e.g. sleep hours) don't all round to
   // the same integer — that was producing duplicate "1, 1, 0" axis labels when nothing had been logged yet.
   const decimals = maxV < 3 ? 1 : maxV < 15 ? 1 : 0;
-  ctx.strokeStyle=SG_CHART_CONTEXT.grid; ctx.lineWidth=1; ctx.font=FONT_MICRO; ctx.fillStyle=SG_CHART_CONTEXT.axis;
+  ctx.strokeStyle=sgChartContext().grid; ctx.lineWidth=1; ctx.font=FONT_MICRO; ctx.fillStyle=sgChartContext().axis;
   for(let i=0;i<=2;i++){ const y=padT+plotH-(plotH*i/2); ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke(); ctx.fillText((maxV*i/2).toFixed(decimals),2,y+3); }
   ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath(); let started=false;
   values.forEach((v,i)=>{ if(v==null||isNaN(v)) return; const x=padL+plotW*(i/(weeks.length-1)); const y=padT+plotH-(plotH*(v/(maxV||1))); if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y); });
@@ -4071,7 +4175,7 @@ function drawLineChart(canvasId, weeks, values, color){
   values.forEach((v,i)=>{ if(v==null||isNaN(v)) return; const x=padL+plotW*(i/(weeks.length-1)); const y=padT+plotH-(plotH*(v/(maxV||1))); ctx.beginPath(); ctx.arc(x,y,2,0,7); ctx.fill(); });
   // X-axis: always anchor the first and last week so the chart visibly spans the full 12-week program,
   // plus a couple of markers in between.
-  ctx.fillStyle=SG_CHART_CONTEXT.axis; ctx.font=FONT_MICRO;
+  ctx.fillStyle=sgChartContext().axis; ctx.font=FONT_MICRO;
   const lastIdx = weeks.length-1;
   weeks.forEach((wk,i)=>{
     if(i!==0 && i!==lastIdx && wk%3!==1) return;
@@ -4257,11 +4361,71 @@ function renderPlan(){
   wireCard(panel);
 }
 
+/* ================= THEME =================
+ * Three states, not two: System, Light, Dark, with System the default. A two-state toggle fights
+ * the setting the user already made at OS level — if the phone is dark and the app offers only
+ * "dark on/off", there is no way to say "whatever the phone says".
+ *
+ * Stored DEVICE-LOCAL in its own localStorage key, deliberately NOT in DATA — same reasoning as
+ * DASH_OPEN_KEY. It is UI state: in DATA it would schedule a cloud push on every tap and push one
+ * device's theme onto the others. It is also not a training record, and DATA is the thing that gets
+ * synced, archived and restored.
+ */
+const THEME_KEY = 'hockey_tracker_theme';
+const THEMES = ['system','light','dark'];
+function storedTheme(){
+  let t = null;
+  try{ t = localStorage.getItem(THEME_KEY); }catch(e){}
+  return THEMES.includes(t) ? t : 'system';
+}
+// The ONE place that answers "is the app dark right now" — for the canvas, which cannot read CSS
+// custom properties, and for the status-bar meta. Everything else follows the tokens automatically.
+function isDarkNow(){
+  const t = storedTheme();
+  if(t === 'dark')  return true;
+  if(t === 'light') return false;
+  return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+// The status bar on the installed app is tinted by this, so it must match what is actually painted
+// at the top of the screen — header{background:var(--bg)} — rather than the brand colour.
+function updateThemeColorMeta(){
+  const m = document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute('content', isDarkNow() ? '#080E1A' : '#FFFFFF');
+}
+function applyTheme(){
+  const t = storedTheme();
+  if(t === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+  updateThemeColorMeta();
+  // Charts are bitmaps: a token change cannot reach them, so anything already drawn is now the
+  // wrong palette and has to be redrawn. Guarded because drawDashCharts reads canvases that only
+  // exist once the dashboard has rendered.
+  try{ if(document.getElementById('bw-chart')) drawDashCharts(); }catch(e){}
+}
+function setTheme(t){
+  if(!THEMES.includes(t)) return;
+  try{ localStorage.setItem(THEME_KEY, t); }catch(e){}
+  applyTheme();
+  renderSettings();
+}
+function themePickerHtml(){
+  const cur = storedTheme();
+  const label = { system:'System', light:'Light', dark:'Dark' };
+  return `<div class="pill-group">${THEMES.map(t =>
+    `<div class="pill sel ${cur===t?'active':''}" onclick="setTheme('${t}')">${label[t]}</div>`).join('')}</div>`;
+}
+
 function renderSettings(){
   const panel = document.getElementById('panel-settings');
   panel.innerHTML = `<h2>Settings</h2>
   <div class="note">Add this page to your Home Screen (Safari share icon &rarr; "Add to Home Screen") so it opens full-screen like an app.</div>
-  <h3 style="font-size:var(--fs-ui);margin:0 0 8px">Cloud sync</h3>
+  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Appearance</h3>
+  <div class="card">
+    <div style="font-size:var(--fs-body);color:var(--text-dim);margin-bottom:var(--sp-3)">System follows your phone’s own setting.</div>
+    ${themePickerHtml()}
+  </div>
+
+  <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Cloud sync</h3>
   <div class="card">${cloudCardHtml()}</div>
 
   <h3 style="font-size:var(--fs-ui);margin:var(--sp-4) 0 var(--sp-2)">Training mode</h3>
@@ -4472,6 +4636,15 @@ function importData(evt){
 function clearAll(){ DATA={w1:{},w2:{},cardio:{},mobility:{},body:{},injury:{},skip:{},activity:{},extra:{},dayPick:{},settings:{},session:{},tests:{},readiness:{},supplements:{},pillStock:{},steps:{},schemaVersion:SCHEMA_VERSION}; save(); renderToday(); renderPlan(); renderSettings(); }
 
 /* ================= INIT ================= */
+applyTheme();   // before the first paint of anything themed
+// While the choice is System, a change to the phone's own setting has to reach the canvas too:
+// the CSS flips itself, but an already-drawn chart is a bitmap in the old palette.
+if(window.matchMedia){
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  const onSchemeChange = () => { if(storedTheme() === 'system') applyTheme(); };
+  if(mq.addEventListener) mq.addEventListener('change', onSchemeChange);
+  else if(mq.addListener) mq.addListener(onSchemeChange);
+}
 renderToday();
 // Plan and Settings render lazily in selectTab(), so nothing renders them at boot.
 // Initial sync, fired after the app has already rendered from localStorage. Deliberately NOT awaited
