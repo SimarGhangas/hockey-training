@@ -78,11 +78,22 @@
   --accent:#15233F; --accent-dim:#E8EFFB; --accent-text:#15233F;
   --success:#17693F; --success-dim:#E7F3EC;
   --danger:#B42318; --danger-dim:#FCE9E7;
-  /* The steps calendar's LOW band. Design-system ruling 15 Oct 2026: SG Fit has exactly ONE red,
-     and this is its single sanctioned status use — it reads as the bottom of an ordered three-band
-     scale, not as an alarm. Deliberately NOT --danger: in dark those diverge (critical #FF6B61 sits
-     only dE 5.4 from the accent, close enough to look like a bug rather than a decision). */
-  --steps-low:#B42318;
+  /* ONE ORDERED THREE-BAND SCALE, used by BOTH calendars — the steps calendar (10,000+ / 5,001-9,999
+     / 5,000 or fewer) and the training calendar (trained / mobility only / injured or ill). Renamed
+     from --steps-low on 16 Oct 2026 per the brand rule in sg-brand references/app-ui.md, "a token
+     named after one of the two things it serves will mislead the next person who reads it": the old
+     name was steps-specific, so the next person touching the training calendar would have added a
+     second token rather than reused this one.
+     The values are UNCHANGED by the rename. --cal-band-low is the accent, which is SG Fit's single
+     sanctioned status red (15 Oct ruling): it reads as the bottom of an ordered scale, not an alarm.
+     It is deliberately NOT --danger — in dark those diverge, critical #FF6B61 sitting only dE 5.4
+     from the accent, close enough to look like a bug rather than a decision.
+     mid and high carry today's --warn and --success values as their OWN hexes rather than var()ing
+     at them: the point of the rename is that these bands stop riding on general status tokens, which
+     are used elsewhere in the app for things that must not move with the calendars. */
+  --cal-band-low:#B42318;
+  --cal-band-mid:#8A5A00;
+  --cal-band-high:#17693F;
   --warn:#8A5A00; --warn-dim:#FBF0DA;
   --link:#1F5BD0;
   /* Modal scrim. A fixed navy wash works on a white page; on a near-black one it is invisible and
@@ -155,7 +166,9 @@
   --accent-text:#E8EDF5;
   --success:#2FB983; --success-dim:#0F2A21;   /* --sg-good / tint */
   --danger:#FF6B61;  --danger-dim:#331A19;    /* --sg-critical / tint */
-  --steps-low:#FF4A55;                        /* the ACCENT, not critical — see the light block */
+  --cal-band-low:#FF4A55;                     /* the ACCENT, not critical — see the light block */
+  --cal-band-mid:#D99A2B;                     /* today's --warn, as its own hex */
+  --cal-band-high:#2FB983;                    /* today's --success, as its own hex */
   --warn:#D99A2B;    --warn-dim:#2C2211;      /* --sg-warning / tint */
   --link:#5B8DEF;        /* --sg-data-blue  6.0:1 on base */
   --scrim:rgba(0,0,0,.78);   /* near-black: the dark card is lighter than the page, not darker */
@@ -168,7 +181,9 @@
   --accent:#E8EDF5; --accent-dim:#13203A; --accent-text:#E8EDF5;
   --success:#2FB983; --success-dim:#0F2A21;
   --danger:#FF6B61; --danger-dim:#331A19;
-  --steps-low:#FF4A55;
+  --cal-band-low:#FF4A55;
+  --cal-band-mid:#D99A2B;
+  --cal-band-high:#2FB983;
   --warn:#D99A2B; --warn-dim:#2C2211;
   --link:#5B8DEF; --scrim:rgba(0,0,0,.78); --hairline:#1B2539; --ink-on-fill:#080E1A;
 }
@@ -881,7 +896,7 @@ const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3A
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-10-16 15:14';
+const APP_BUILD = '2026-10-16 19:17';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -4227,13 +4242,13 @@ function mcalLegend(items){
 // Training status colours. --warn is the brand's warning token (#8A5A00, a dark amber rather than a
 // vivid orange) — the brand token is used deliberately in preference to a literal orange.
 const DAY_STATUS_STYLE = {
-  workout:  { bg:'var(--success)', fg:'var(--ink-on-fill)', label:'trained' },
-  mobility: { bg:'var(--warn)',    fg:'var(--ink-on-fill)', label:'mobility only' },
-  // --steps-low, NOT --danger. The one-red ruling of 15 Oct 2026 originally sanctioned only the
+  workout:  { bg:'var(--cal-band-high)', fg:'var(--ink-on-fill)', label:'trained' },
+  mobility: { bg:'var(--cal-band-mid)',  fg:'var(--ink-on-fill)', label:'mobility only' },
+  // --cal-band-*, NOT --danger/--success/--warn. The one-red ruling of 15 Oct 2026 originally sanctioned only the
   // steps calendar; Simar extended it to this calendar on 16 Oct. The two sit side by side on the
   // Dashboard and in DARK they were #FF4A55 and #FF6B61 — dE 5.4 apart, which reads as a bug rather
   // than a decision. In LIGHT they were already the same hex, so this never showed there.
-  unwell:   { bg:'var(--steps-low)', fg:'var(--ink-on-fill)', label:'injured / ill' },
+  unwell:   { bg:'var(--cal-band-low)',  fg:'var(--ink-on-fill)', label:'injured / ill' },
   none:     { bg:'var(--surface)', fg:'var(--text-dim)', label:'nothing logged' },
 };
 // Contract: return null when there is NOTHING to show for that day. The renderer then decides between
@@ -4266,13 +4281,13 @@ function stepsDayColor(date){
   if(!p) return null;
   const n = stepsFor(p.week, p.dayIndex);
   if(n === null) return null;                       // nothing logged -> blank, never red
-  const bg = n >= STEP_GREEN ? 'var(--success)' : n > STEP_RED ? 'var(--warn)' : 'var(--steps-low)';
+  const bg = n >= STEP_GREEN ? 'var(--cal-band-high)' : n > STEP_RED ? 'var(--cal-band-mid)' : 'var(--cal-band-low)';
   return { bg, fg:'var(--ink-on-fill)', title:`${ymd(date)} — ${n.toLocaleString()} steps` };
 }
 function renderStepsCalendar(){
   return renderMonthCalendar(stepsDayColor, mcalLegend([
-    ['var(--success)','10,000+'], ['var(--warn)','5,001 - 9,999'],
-    ['var(--steps-low)','5,000 or fewer'], ['var(--surface)','Not logged'],
+    ['var(--cal-band-high)','10,000+'], ['var(--cal-band-mid)','5,001 - 9,999'],
+    ['var(--cal-band-low)','5,000 or fewer'], ['var(--surface)','Not logged'],
   ]));
 }
 // ---- The CALENDAR week: Monday to Sunday. -------------------------------------------------------
@@ -4353,8 +4368,8 @@ function stepsAverage(){
 }
 function renderTrainingCalendar(){
   return renderMonthCalendar(trainingDayColor, mcalLegend([
-    ['var(--success)','Trained'], ['var(--warn)','Mobility only'],
-    ['var(--steps-low)','Injured / ill'], ['var(--surface)','Nothing logged'],
+    ['var(--cal-band-high)','Trained'], ['var(--cal-band-mid)','Mobility only'],
+    ['var(--cal-band-low)','Injured / ill'], ['var(--surface)','Nothing logged'],
   ]));
 }
 // Average of the day's own 4 scores (all higher-is-better), averaged again across every day that week
