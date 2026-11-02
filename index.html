@@ -632,6 +632,25 @@ nav.bottomnav button.active::after{content:'';position:absolute;top:6px;left:50%
 .statrow span:first-child{color:var(--text-dim);}
 .statrow .n{font-variant-numeric:tabular-nums;}
 .statrow:last-child{border-bottom:none;}
+/* The one-line caption naming the week the key rows cover. Caption size and Slate, per the type rule
+   that hint text is --text-dim at any size; no border, because it is not a row. */
+.statrow-note{font-size:var(--fs-caption);color:var(--text-dim);padding:var(--sp-3) 0 0;}
+/* The 4-week metric chooser. Segmented, 16px minimum control font (the iOS floor), one accent dot of
+   emphasis on the selected one — a background fill, not a red marker. */
+/* Three equal segments on ONE line at 375px. The first version used flex-wrap and padding, which put
+   "Steps" on a second row on a phone — two lines of chooser above a 140px chart is most of the card. */
+.wkpick{display:flex;gap:var(--sp-2);margin-bottom:var(--sp-3);}
+.wkpick button{flex:1 1 0;min-width:0;}
+/* min-height 44 is the touch floor, and the harness enforces it — the first version used sp-2/sp-3
+   padding and came out 37px, which the control-size guard caught before this shipped. */
+.wkpick button{font-size:var(--fs-ui);font-weight:600;padding:var(--sp-3) var(--sp-2);min-height:44px;
+  background:transparent;border:1px solid var(--hairline);border-radius:0;color:var(--text-dim);}
+/* The selected segment fills with --accent, which in this app is the brand NAVY (light) / reversed ink
+   (dark) — NOT the product red. That is deliberate and must stay: red is the single accent point per
+   screen and "Log something" already holds it here. A red selected segment would be a second red and
+   a chip, which the design rule forbids outright: no red chip, no red delta, no red number. */
+.wkpick button[aria-pressed="true"]{color:var(--ink-on-fill);background:var(--accent);
+  border-color:var(--accent);}
 /* Navigation rows. Same hairline and the same 16px as a section label, because that is what they
    are to the reader: another thing on this page you can open. A real <button>, so it is reachable
    by keyboard and announced as an action. */
@@ -896,7 +915,7 @@ const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3A
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-11-02 17:01';
+const APP_BUILD = '2026-11-02 17:55';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -1406,7 +1425,7 @@ function applyDefaults(d){
   d.extra = d.extra || {}; // "{week}_{dayIndex}": {active, type, calories, distance, hr, duration, opponent, result, done, notes} — an ADDITIONAL Football/Hockey Training/Hockey Match on top of whatever's picked that day (e.g. cardio AM + training PM)
   d.dayPick = d.dayPick || {}; // "{week}_{dayIndex}": sessionTypeId | null — what was explicitly picked for that date. No default/plan behind it (removed 14 Sep 2026) — absent or null both just mean Rest.
   d.settings = d.settings || {}; // one-off values that don't change weekly, e.g. height for BMI
-  d.session = d.session || {}; // "{w1|w2}_{week}": {rpe, duration} — whole-session RPE, separate from per-exercise w1/w2 rows
+  d.session = d.session || {}; // "{w1|w2}_{week}": {rpe, duration, calories, hr} — whole-session figures, separate from the per-exercise w1/w2 rows. The `calories` field is the ONLY place a strength session's active burn is stored, which is what the Dashboard's Active-burn line reads; this comment said just {rpe, duration} until 2 Nov 2026 and that omission nearly left strength out of that total.
   d.tests = d.tests || {}; // "{1|6|12}": {sprint, cod, jump, run} — baseline/mid/final fitness benchmarks
   d.readiness = d.readiness || {}; // "{week}_{dayIndex}": {soreness, sleep, stress, motivation} each '1'-'5', higher = better/readier. Pre-session leading indicator, complements post-session RPE.
   d.supplements = d.supplements || {}; // "{week}_{dayIndex}": {"{itemId}":'Y'|'N'} — adherence checklist against the day-appropriate SUPPLEMENT_SCHEDULES stack. No dosage/medical logic here, purely a checklist mirror of Simar's supplement/protein consult doc (updated 17 Sep 2026).
@@ -1706,6 +1725,126 @@ function scheduleCloudPush(){
   cloudPushTimer = setTimeout(function(){ cloudSyncNow(true); }, 4000);
 }
 
+/* ================= THE SHRINK GUARD (3 Nov 2026) =================
+ * Both branches of cloudSyncNow() that replace local data with the cloud copy go through
+ * adoptRemoteGuarded(). Before this, only the FIRST was guarded — by hasTrainingData, written after
+ * the 26 Sep 2026 loss — and the second (`remoteStamp > localStamp`) adopted wholesale with no guard
+ * at all, whenever the cloud row was merely newer.
+ *
+ * hasTrainingData would not have saved it either: it returns true if ANY ONE training bucket is
+ * non-empty, so it tests for EMPTINESS, not for PARTIALNESS. A row carrying only `steps` with a fresh
+ * timestamp passes it, wins the stamp comparison, and takes every workout, weigh-in and injury record
+ * with it. Three ways that actually arises: a readings publisher writing one bucket; an older or
+ * cached build writing a row with no `meals` key at all; and a partially damaged instance, which the
+ * first branch cannot catch because `!localHas` is false.
+ *
+ * THE RULE: a training bucket may never shrink. If none would, adopt wholesale exactly as before —
+ * the ordinary multi-device case is unchanged and silent. If any would, archive, adopt the buckets
+ * that do not shrink, and KEEP LOCAL for the ones that would.
+ *
+ * It is deliberately NOT a question. A modal would be dismissed by reflex and would need a rule for
+ * what happens unanswered, which is a third outcome and the one most likely to go wrong. Here, doing
+ * nothing IS the safe outcome; the notice is non-blocking and carries one action for the rare case
+ * where he genuinely wants the smaller cloud copy.
+ *
+ * What it does NOT do: merge record by record. Records carry no individual timestamps — only the
+ * document does, via settings.updatedAt — so a true merge needs a schema change first. The cost of
+ * bucket granularity is that a deletion made on another device does not propagate for that bucket
+ * until he deletes it here too. Worst case: deleting something twice. Worst case without the rule:
+ * losing the bucket.
+ */
+// Five is a cap, not a preference. Each archive is a whole DATA document (~13-20KB today), so five is
+// well under any quota — but UNBOUNDED archives are the real hazard: filling localStorage makes
+// save() itself throw, which loses the live data this is supposed to protect. A cap is the safety
+// feature; the number only has to be big enough to survive a cluster of adoptions in one session.
+const PRESYNC_KEEP = 5;
+const PRESYNC_PREFIX = 'hockey_tracker_preSync_';
+function trainingBucketCounts(d){
+  const out = {};
+  TRAINING_BUCKETS.forEach(function(b){
+    const v = d && d[b];
+    out[b] = (v && typeof v === 'object') ? Object.keys(v).length : 0;
+  });
+  return out;
+}
+// Which training buckets the remote copy has FEWER records in. An absent bucket counts as 0, so an
+// older build's row — which has no `meals` key at all — reads as a shrink rather than as "nothing to
+// compare". That is the case that protects a parked release when it un-parks.
+function shrinkingBuckets(remote, local){
+  const r = trainingBucketCounts(remote), l = trainingBucketCounts(local);
+  return TRAINING_BUCKETS.filter(function(b){ return r[b] < l[b]; });
+}
+// Timestamped, never overwritten. The old key was the DATE, so a second adoption on the same day
+// destroyed the archive from before the first one — precisely the copy anyone would want back.
+function archiveLocalCopy(reason){
+  // toISOString() is millisecond-resolution, and two adoptions CAN land in the same millisecond — the
+  // first version of this collided on exactly that and silently kept one archive where two were due,
+  // which is the bug it was written to fix, reappearing one layer down. A suffix makes the key unique
+  // without pretending to more precision than the clock has.
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  let key = PRESYNC_PREFIX + stamp, n = 1;
+  try{ while(localStorage.getItem(key) !== null){ key = PRESYNC_PREFIX + stamp + '-' + (++n); } }catch(e){}
+  try{
+    localStorage.setItem(key, JSON.stringify({ at:new Date().toISOString(), reason:reason, data:DATA }));
+  }catch(e){ return null; }
+  try{
+    const keys = Object.keys(localStorage).filter(function(k){ return k.indexOf(PRESYNC_PREFIX) === 0; }).sort();
+    while(keys.length > PRESYNC_KEEP){ localStorage.removeItem(keys.shift()); }
+  }catch(e){}
+  return key;
+}
+function presyncArchives(){
+  try{
+    return Object.keys(localStorage).filter(function(k){ return k.indexOf(PRESYNC_PREFIX) === 0; }).sort();
+  }catch(e){ return []; }
+}
+// THE ONE ADOPTION PATH. Both branches call this; neither may assign DATA itself.
+function adoptRemoteGuarded(remote, reason){
+  const shrink = shrinkingBuckets(remote, DATA);
+  const archiveKey = archiveLocalCopy(reason);
+  const merged = applyDefaults(remote);
+  shrink.forEach(function(b){ merged[b] = DATA[b]; });   // keep local where the remote is smaller
+  DATA = merged;
+  migrateData();
+  localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+  return { shrink:shrink, archiveKey:archiveKey, partial:shrink.length > 0 };
+}
+// Plain words, naming what was kept rather than what the rule is called.
+function shrinkNoticeText(shrink){
+  const NAMES = { w1:'workouts', w2:'workouts', cardio:'cardio', mobility:'mobility', body:'weigh-ins',
+                  injury:'injuries', skip:'skipped days', activity:'activities', extra:'extra activities',
+                  dayPick:'session picks', session:'session notes', tests:'fitness tests',
+                  readiness:'readiness checks', supplements:'supplements', pillStock:'pill stock',
+                  steps:'steps', meals:'meals' };
+  const seen = [];
+  shrink.forEach(function(b){ const n = NAMES[b] || b; if(seen.indexOf(n) === -1) seen.push(n); });
+  const list = seen.length === 1 ? seen[0]
+             : seen.slice(0, -1).join(', ') + ' and ' + seen[seen.length - 1];
+  return 'Kept this phone’s ' + list + ' — the cloud copy had fewer.';
+}
+// The one action on the notice, for the rare case where the smaller cloud copy is the wanted one.
+// It archives again first, so taking it is itself reversible.
+async function useCloudCopyAnyway(){
+  if(!cloudConfigured() || !getSession()) return;
+  try{
+    const sess = getSession();
+    const res = await cloudRest(CLOUD_TABLE + '?user_id=eq.' + encodeURIComponent(sess.user.id) + '&select=data', { method:'GET' });
+    const rows = await res.json();
+    const remote = rows && rows[0] ? rows[0].data : null;
+    if(!remote){ cloudState = { status:'error', message:'No cloud copy to use', busy:false }; renderSettings(); return; }
+    archiveLocalCopy('use-cloud-anyway');
+    DATA = applyDefaults(remote);
+    migrateData();
+    localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+    markSynced();
+    cloudState = { status:'ok', message:'Using the cloud copy. Your previous data is in this device’s backups.', busy:false, kept:null };
+    renderToday(); renderPlan(); renderSettings(); renderDashboard();
+  }catch(e){
+    cloudState = { status:'error', message:(e && e.message) ? e.message : String(e), busy:false };
+    renderSettings();
+  }
+}
+
 async function cloudSyncNow(quiet){
   if(!cloudConfigured() || !getSession() || cloudState.busy) return;
   cloudState.busy = true;
@@ -1725,24 +1864,20 @@ async function cloudSyncNow(quiet){
     // that has some, whatever the clocks say — the worst case under this rule is re-downloading your
     // own data, and the worst case without it is losing all of it.
     if(remote && remoteHas && !localHas){
-      try{ localStorage.setItem('hockey_tracker_preSync_' + ymd(new Date()), JSON.stringify(DATA)); }catch(e){}
-      DATA = applyDefaults(remote);
-      migrateData();
-      localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+      const g1 = adoptRemoteGuarded(remote, 'restore-empty-local');
       markSynced();
-      cloudState = { status:'ok', message:'Restored your data from the cloud', busy:false };
+      cloudState = { status:'ok', busy:false, kept: g1.partial ? g1.shrink : null,
+        message: g1.partial ? shrinkNoticeText(g1.shrink) : 'Restored your data from the cloud' };
       renderToday(); renderPlan(); renderSettings();
       return;
     }
     if(remote && remoteStamp > localStamp){
       // Cloud is genuinely newer (another device). Archive local before adopting it — an automatic
       // overwrite of real training data should always be recoverable.
-      try{ localStorage.setItem('hockey_tracker_preSync_' + ymd(new Date()), JSON.stringify(DATA)); }catch(e){}
-      DATA = applyDefaults(remote);
-      migrateData();
-      localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+      const g2 = adoptRemoteGuarded(remote, 'remote-newer');
       markSynced();
-      cloudState = { status:'ok', message:'Pulled newer data from another device', busy:false };
+      cloudState = { status:'ok', busy:false, kept: g2.partial ? g2.shrink : null,
+        message: g2.partial ? shrinkNoticeText(g2.shrink) : 'Pulled newer data from another device' };
       renderToday(); renderPlan(); renderSettings();
       return;
     }
@@ -4051,47 +4186,29 @@ function subjectLabel(){
   if(!pw || !pw.run) return 'This week';
   return `Week ${pw.week} of ${pw.run.weeks}`;
 }
-// Both prior-week loops below count with sessionsOn, NOT hasTrainingOn (changed 2 Nov 2026 with the
-// subject). They have to: `n` is a session count, so counting the weeks it is compared against in DAYS
-// would compare two different units and silently understate every prior week the moment one of them
-// held two sessions in a day. The sentence is the comparison, so a unit mismatch here is not cosmetic.
+// The sentence under the subject, on the SAME Mon-Sun week and the SAME session count as the figure
+// it explains (Release B, 2 Nov 2026). It used to compare PROGRAM weeks (Sunday-anchored) against a
+// subject that is now a calendar week, which would have put a number and its own explanation on two
+// different weeks — the exact fault Simar reported, one line further down.
+//
+// It also has to count the prior weeks in SESSIONS, not days: `n` is a session count, so measuring the
+// weeks it is compared against in days would silently understate every past week that held two
+// sessions in one day. The sentence IS the comparison, so a unit mismatch here is not cosmetic.
+//
+// Weeks with nothing logged are skipped rather than averaged in as zeros. Four quiet weeks would
+// otherwise make any ordinary week read as a triumph, which is flattery, not information.
 function weekSummarySentence(){
-  const n = sessionsThisWeek();
-  const now = weekInfoFor(startOfDay(new Date()));
-  const run = activeProgramRun();
-  if(run){
-    // Inside a run, compare with the run's own weeks — a rolling four-week average can reach back
-    // before the block started, which makes it a comparison against a different kind of training.
-    const pw = programWeekFor(startOfDay(new Date()));
-    if(pw && pw.week > 1){
-      const counts = [];
-      for(let w = Math.max(1, now.week - (pw.week - 1)); w < now.week; w++){
-        let c = 0;
-        for(let d = 0; d < 7; d++){ c += sessionsOn(w, d); }
-        counts.push(c);
-      }
-      if(counts.length){
-        const avg = counts.reduce((a,b)=>a+b,0) / counts.length;
-        const diff = n - avg;
-        if(Math.abs(diff) < 0.5) return `The same as your other weeks in this block.`;
-        return `${Math.abs(diff) >= 1.5 ? Math.round(Math.abs(diff)) : 1} ${diff > 0 ? 'more than' : 'fewer than'} your average of ${avg.toFixed(1)} so far in this block.`;
-      }
-    }
-    return 'Week one of the block.';
-  }
-  const priors = [];
-  for(let w = Math.max(1, now.week - 4); w < now.week; w++){
-    let c = 0;
-    for(let d = 0; d < 7; d++){ c += sessionsOn(w, d); }
-    priors.push(c);
-  }
-  if(!priors.length) return null;
-  const avg = priors.reduce((a,b)=>a+b,0) / priors.length;
+  const n = calWeekStats(new Date()).sessions;
+  const priors = lastCalWeeks(5, new Date()).slice(0, 4)      // the four BEFORE this one, oldest first
+    .map(function(w){ return calWeekStats(w.start).sessions; })
+    .filter(function(c){ return c > 0; });
+  if(!priors.length) return n > 0 ? 'Your first logged week.' : null;
+  const avg = priors.reduce(function(a,b){ return a+b; }, 0) / priors.length;
   const diff = n - avg;
   if(Math.abs(diff) < 0.5) return 'The same as your recent average.';
   const word = diff > 0 ? 'more than' : 'fewer than';
   const r = Math.abs(diff) >= 1.5 ? Math.round(Math.abs(diff)) : 1;
-  return `${r} ${word} your recent average of ${avg.toFixed(1)}.`;
+  return `${r} session${r===1?'':'s'} ${word} your recent average of ${avg.toFixed(1)}.`;
 }
 function activeTrainingDays(){
   const b = trainingBreakdown();
@@ -4949,8 +5066,159 @@ function drawDashCharts(){
   drawLineChart('rhr-chart', weeks, weeks.map(w=>{ const r=DATA.body[String(w)]; return r&&r.rhr!==undefined&&r.rhr!=='' ? parseFloat(r.rhr):null; }), sgChart()[2]);
   drawLineChart('readiness-chart', weeks, weeks.map(weeklyReadinessAvg), sgChart()[1]);
   drawLineChart('load-chart', weeks, weeks.map(weeklyTrainingLoad), sgChart()[3]);
+  // The 4-week comparison. Drawn here with the others so a theme switch redraws it too: an
+  // already-drawn canvas is a bitmap in the old palette and cannot re-read a CSS variable.
+  drawWeekCompare('wk-compare');
   renderStrengthChart(selectedStrengthEx.key, selectedStrengthEx.slot);
 }
+/* ================= THE DASHBOARD'S WEEK (Release B, 2 Nov 2026) =================
+ * Simar: "the dashboard numbers at the top are not all starting on Monday ... The top numbers need to
+ * a total of Monday to Sunday, except steps, which should be average."
+ *
+ * Before this, the top of the Dashboard mixed THREE week bases on one screen: the subject counted the
+ * Sunday-anchored PROGRAM week (weekInfoFor), Distance counted the Mon-Sun calendar week
+ * (calWeekRange), and Body weight / Strength done / Cardio done were not weekly at all. Every top
+ * figure now uses calWeekRange.
+ *
+ * The two week numberings still both exist ON PURPOSE and must not be merged: START_DATE is Sunday
+ * 4 Oct 2026, so every STORAGE KEY and the training program count Sunday->Saturday, while the
+ * Dashboard's window is Monday->Sunday and touches no key. calWeekStats bridges them the only safe
+ * way: walk the seven DATES of the calendar week, map each date to its own program day key with
+ * dayKeyPartsFor, and sum. A Mon-Sun week straddles two program weeks and that handles it.
+ *
+ * ONE source for the week's figures, deliberately. The comment on trainingBreakdown records what
+ * happened last time two counters disagreed on one screen. Distance is the exception and stays with
+ * distanceThisWeek(): it already counted Mon-Sun correctly, the tile is the one Simar says is right,
+ * and giving it a second implementation here would be exactly the drift this file keeps warning about.
+ */
+function calWeekStats(date){
+  const range = calWeekRange(date);
+  let sessions = 0, strength = 0, cardio = 0, activity = 0, burn = 0;
+  for(let i = 0; i < 7; i++){
+    const p = dayKeyPartsFor(addDays(range.start, i));
+    if(!p) continue;                                  // before START_DATE, or past the program
+    const dayKey = `${p.week}_${p.dayIndex}`;
+    const type = effectiveTypeFor(p.week, p.dayIndex);
+    if(type === 'w1' || type === 'w2'){
+      const exList = type === 'w1' ? WORKOUT1_EXERCISES : WORKOUT2_EXERCISES;
+      if(exList.some(ex => hasSetData(DATA[type][`${p.week}_${ex[0]}`]))){
+        sessions++; strength++;
+        // Strength calories live in DATA.session, keyed {w1|w2}_{week} — NOT on the per-exercise rows.
+        const s = DATA.session[`${type}_${p.week}`];
+        if(s) burn += parseFloat(s.calories) || 0;
+      }
+    } else if(type && CARDIO_TYPES.includes(type)){
+      const rec = DATA.cardio[`${p.week}_${type}`];
+      if(hasMetricData(rec, CARDIO_METRICS)){ sessions++; cardio++; burn += parseFloat(rec.calories) || 0; }
+    } else if(type && ACTIVITY_REASONS.includes(type)){
+      const rec = DATA.activity[dayKey];
+      if(hasMetricData(rec, ACTIVITY_METRICS)){ sessions++; activity++; burn += parseFloat(rec.calories) || 0; }
+    }
+    const ex = DATA.extra[dayKey];
+    if(ex && ex.active && hasMetricData(ex, ACTIVITY_METRICS)){
+      sessions++;
+      if(CARDIO_TYPES.includes(ex.type)) cardio++; else activity++;
+      burn += parseFloat(ex.calories) || 0;
+    }
+  }
+  return {range, sessions, strength, cardio, activity, burn: Math.round(burn),
+          distance: distanceThisWeek(date), stepsAvg: stepsWeeklyAverage(date)};
+}
+// "Mon 2 - Sun 8 Nov". Printed beside the subject so the window the top numbers cover is VISIBLE
+// rather than something Simar has to infer — which is what went wrong in the first place.
+function calWeekLabel(date){
+  const r = calWeekRange(date);
+  const sameMonth = r.start.getMonth() === r.end.getMonth();
+  const s = `${WEEKDAY_ABBR[r.start.getDay()]} ${r.start.getDate()}${sameMonth ? '' : ' ' + MONTH_ABBR[r.start.getMonth()]}`;
+  const e = `${WEEKDAY_ABBR[r.end.getDay()]} ${r.end.getDate()} ${MONTH_ABBR[r.end.getMonth()]}`;
+  return `${s} – ${e}`;
+}
+// The last n Mon-Sun weeks, OLDEST FIRST, ending with the one containing `date`.
+function lastCalWeeks(n, date){
+  const out = [];
+  const here = calWeekRange(date).start;
+  for(let i = n - 1; i >= 0; i--) out.push(calWeekRange(addDays(here, -7 * i)));
+  return out;
+}
+
+/* ---- the 4-week comparison chart ----
+ * Simar: "I also want a graph comparing up to 4 weeks (distance, activities, steps and weight)."
+ *
+ * WEIGHT IS DELIBERATELY ABSENT, and this is the reason rather than an oversight: DATA.body is keyed
+ * by PROGRAM WEEK only ("3", "4"), one record per week, with no date on a weigh-in. A Mon-Sun week
+ * straddles two program weeks, so "the weekly average of weigh-ins" has no definition the data can
+ * support, and the honest options were to invent one or to change the schema. Simar's instruction on
+ * 2 Nov was to add nothing to make it work and leave it out, so weight is out and the chart says so.
+ * Dated weigh-ins are parked for the meals planning session ("Readings into the app").
+ */
+const DASH_WEEK_METRICS = [
+  {id:'distance',   label:'Distance',   unit:'km',  dec:1, get:function(s){ return s.distance; }},
+  {id:'activities', label:'Activities', unit:'',    dec:0, get:function(s){ return s.sessions; }},
+  {id:'steps',      label:'Steps',      unit:'/day',dec:0, get:function(s){ return s.stepsAvg || 0; }}
+];
+// Device-local and deliberately NOT in DATA: it is a view preference, not training history, and
+// anything inside DATA syncs to the cloud and has to survive a merge.
+let dashWeekMetric = 'distance';
+function setDashWeekMetric(id){
+  if(!DASH_WEEK_METRICS.some(m => m.id === id)) return;
+  dashWeekMetric = id;
+  renderDashboard();
+}
+function drawWeekCompare(canvasId){
+  const canvas = document.getElementById(canvasId); if(!canvas) return;
+  if(!canvas.parentElement || canvas.parentElement.clientWidth === 0) return;  // closed card: 0 width
+  const metric = DASH_WEEK_METRICS.find(m => m.id === dashWeekMetric) || DASH_WEEK_METRICS[0];
+  const weeks = lastCalWeeks(4, new Date());
+  const stats = weeks.map(function(w){ return calWeekStats(w.start); });
+  const vals = stats.map(metric.get);
+
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const avail = canvas.parentElement.clientWidth - 32;
+  const w = avail > 40 ? avail : 280, h = 140;
+  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  if(!vals.some(function(v){ return v > 0; })){
+    ctx.fillStyle = sgChartContext().axis; ctx.font = FONT_CAPTION; ctx.textAlign = 'center';
+    ctx.fillText('Nothing logged in the last four weeks', w / 2, h / 2);
+    ctx.textAlign = 'left';
+    return;
+  }
+
+  // Direct value labels on the bars, no y-axis: four bars do not need a scale to be read, and the
+  // number is the thing he wants. dataviz rule — label the mark, not the axis.
+  const padT = 20, padB = 30, padX = 6;
+  const plotH = h - padT - padB;
+  const maxV = Math.max.apply(null, vals) * 1.25 || 1;
+  const slot = (w - padX * 2) / 4;
+  const barW = Math.min(44, slot * 0.56);
+  const colours = sgChart();                      // one colour per week, consistent across metrics
+  ctx.textAlign = 'center';
+  vals.forEach(function(v, i){
+    const cx = padX + slot * i + slot / 2;
+    const bh = v > 0 ? Math.max(2, plotH * (v / maxV)) : 0;
+    const y = padT + plotH - bh;
+    ctx.fillStyle = colours[i % colours.length];
+    ctx.fillRect(cx - barW / 2, y, barW, bh);
+    if(v > 0){
+      ctx.fillStyle = sgChartContext().axis; ctx.font = FONT_CAPTION;
+      ctx.fillText(metric.dec ? v.toFixed(metric.dec) : String(Math.round(v)), cx, y - 6);
+    }
+  });
+  // X labels: the week's Monday date, with "This week" on the last one.
+  ctx.font = FONT_MICRO; ctx.fillStyle = sgChartContext().axis;
+  weeks.forEach(function(wk, i){
+    const cx = padX + slot * i + slot / 2;
+    ctx.fillText(i === 3 ? 'This week' : (wk.start.getDate() + ' ' + MONTH_ABBR[wk.start.getMonth()]),
+                 cx, h - 14);
+    if(i === 3) ctx.fillText(wk.start.getDate() + ' ' + MONTH_ABBR[wk.start.getMonth()], cx, h - 3);
+  });
+  ctx.textAlign = 'left';
+}
+
 function renderDashboard(){
   const panel = document.getElementById('panel-dashboard');
   const w1 = strengthAdherence('w1'), w2 = strengthAdherence('w2');
@@ -4963,7 +5231,11 @@ function renderDashboard(){
     const parts = String(k).split('_');
     if(parts.length === 2 && hasMobilityOn(parseInt(parts[0],10), parseInt(parts[1],10))) mobDone++;
   });
-  const totalDist = distanceThisWeek(new Date());
+  // ONE call, ONE source for every top figure that is weekly (Release B, 2 Nov 2026). Calling
+  // calWeekStats twice, or recomputing a figure beside it, is how two counters on one screen start
+  // to disagree — see the comment on trainingBreakdown for what that cost last time.
+  const wk = calWeekStats(new Date());
+  const totalDist = wk.distance;
   // First-ever vs most-recently-logged body weight, scanned across the whole timeline — NOT hardcoded to
   // week1/week12. Those were fine when the program was a fixed 12 weeks, but with Cycle 2 now running
   // through week 25, freezing this stat at week12 would make it silently go stale the moment Simar logs
@@ -4998,19 +5270,29 @@ function renderDashboard(){
     return `<div class="bar-row"><div class="lbl">${label} — ${pct}%</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div></div>`; }
 
   panel.innerHTML = `  <div class="subject">
-    <div class="subject-label">${esc(subjectLabel())}</div>
-    <div class="subject-fig"><span class="subject-n">${sessionsThisWeek()}</span><span class="subject-unit">session${sessionsThisWeek()===1?'':'s'}</span></div>
+    <div class="subject-label">${esc(subjectLabel())} &middot; ${esc(calWeekLabel(new Date()))}</div>
+    <div class="subject-fig"><span class="subject-n">${wk.sessions}</span><span class="subject-unit">session${wk.sessions===1?'':'s'}</span></div>
     ${(()=>{ const t = weekSummarySentence(); return t ? `<div class="subject-note">${esc(t)}</div>` : ''; })()}
   </div>
   <!-- The three the artboard puts directly under the subject: they are the evidence for "am I turning
        up", so they are not behind a tap. Everything else stays in Totals below. Nothing is duplicated —
        distance and body weight appear here INSTEAD of in the list, not as well as. -->
   <div class="statlist keyrows">
-    <div class="statrow"><span>Distance this week</span><span class="n">${totalDist.toFixed(1)} km</span></div>
-    <div class="statrow"><span>Steps, daily average</span><span class="n">${stepsWeeklyAverage() ? esc(Number(stepsWeeklyAverage()).toLocaleString()) : '&mdash;'}</span></div>
+    <div class="statrow"><span>Distance</span><span class="n">${totalDist.toFixed(1)} km</span></div>
+    <div class="statrow"><span>Steps, daily average</span><span class="n">${wk.stepsAvg ? esc(Number(wk.stepsAvg).toLocaleString()) : '&mdash;'}</span></div>
+    <!-- Active burn sits BEFORE Body weight, as asked. The label names its source on purpose: this is
+         the sum of the calories logged ON SESSIONS (strength, cardio, activity and extra), NOT Apple
+         Health's whole-day active energy. Two burn figures where each could be read as the other is
+         the trap; the label is what keeps them apart. -->
+    <div class="statrow"><span>Active burn, logged activities</span><span class="n">${wk.burn ? esc(Number(wk.burn).toLocaleString())+' kcal' : '&mdash;'}</span></div>
+    <!-- Body weight is UNCHANGED and is NOT a weekly figure: it is the latest weigh-in with the change
+         since the first. Simar, 2 Nov 2026: leave it exactly as it is. A weekly average needs a DATED
+         weigh-in and DATA.body is keyed by program week only, so there is nothing to average inside a
+         Mon-Sun window. Parked for the meals planning session; do not quietly make it weekly. -->
     <div class="statrow"><span>Body weight</span><span class="n">${bwLatest==null||isNaN(bwLatest) ? '&mdash;' : esc(bwLatest.toFixed(1))+' kg'}${bwChange==null?'':` <span style="color:var(--text-dim)">${bwChange>0?'+':''}${bwChange.toFixed(1)}</span>`}</span></div>
-    ${isProgramMode() ? `<div class="statrow"><span>Strength done</span><span class="n">${w1.done+w2.done}/${w1.total+w2.total}</span></div>
-    <div class="statrow"><span>Cardio done</span><span class="n">${cardio.done}/${cardio.total}</span></div>` : ''}
+    ${isProgramMode() ? `<div class="statrow"><span>Strength sessions</span><span class="n">${wk.strength}</span></div>
+    <div class="statrow"><span>Cardio sessions</span><span class="n">${wk.cardio}</span></div>` : ''}
+    <div class="statrow-note">Every figure above covers ${esc(calWeekLabel(new Date()))}, except body weight.</div>
   </div>
   <!-- The action sits here, not at the foot. The artboard pins it to the bottom of a fixed 844px
        frame, where it is on screen without scrolling; this panel SCROLLS, so the foot would put it
@@ -5019,6 +5301,18 @@ function renderDashboard(){
   <!-- Eight tiles at one size is not a hierarchy, it is the absence of a decision. These are the same
        figures, demoted to rows so the subject above can be two steps larger. Nothing was removed
        and the panel gets SHORTER, which is the point of the ratio rule rather than a side effect. -->
+  <!-- Four Mon-Sun weeks, one metric at a time (Release B, 2 Nov 2026). WEIGHT IS NOT OFFERED and the
+       caption says why: DATA.body is keyed by program week with no date on a weigh-in, so a Mon-Sun
+       average has no definition the data supports. Simar's instruction was to add nothing to make it
+       work. Do not add a weight option without dated weigh-ins. -->
+  <div class="card">
+    <h3>Last four weeks</h3>
+    <div class="wkpick">
+      ${DASH_WEEK_METRICS.map(m=>`<button type="button" aria-pressed="${m.id===dashWeekMetric}" onclick="setDashWeekMetric('${m.id}')">${esc(m.label)}</button>`).join('')}
+    </div>
+    <canvas id="wk-compare" height="140"></canvas>
+    <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-top:var(--sp-2)">Monday to Sunday, oldest first. Steps are a daily average; the rest are totals. Body weight is not here — a weigh-in carries no date yet, so there is nothing to average over a week.</div>
+  </div>
   <div class="card">
     <h3>Training Calendar${isProgramMode() ? ` <span class="tag">${currentStreak()} day${currentStreak()===1?'':'s'} streak</span>` : ''}</h3>
     <div style="font-size:var(--fs-caption);color:var(--text-dim);margin-bottom:var(--sp-3)">One square per day. Nothing logged stays blank — there is no plan to have missed.</div>
@@ -5107,6 +5401,12 @@ function renderDashboard(){
     <div class="statrow"><span>Matches played</span><span class="n">${breakdown.match}</span></div>
     <div class="statrow"><span>Extra cardio / walk sessions</span><span class="n">${breakdown.extraCardio}</span></div>
     <div class="statrow"><span>Total training days logged</span><span class="n">${activeTrainingDays()}</span></div>
+    <!-- The CUMULATIVE programme adherence pair, moved down here on 2 Nov 2026 when the key rows
+         became Mon-Sun. These answer a different question from the weekly counts above — "have I stuck
+         to the plan across the whole run" rather than "what did I do this week" — so they were kept
+         rather than replaced. The bars below show the same two as percentages. -->
+    ${isProgramMode() ? `<div class="statrow"><span>Strength done, whole programme</span><span class="n">${w1.done+w2.done}/${w1.total+w2.total}</span></div>
+    <div class="statrow"><span>Cardio done, whole programme</span><span class="n">${cardio.done}/${cardio.total}</span></div>` : ''}
   </div>
   <div class="card">
     ${bar('Strength - Workout 1', w1.done, w1.total)}
@@ -5275,7 +5575,14 @@ function onPlateCalcInput(){
 function cloudCardHtml(){
   const line = '<div style="font-size:var(--fs-caption);color:' +
     (cloudState.status==='error' ? 'var(--danger)' : 'var(--text-dim)') +
-    ';margin-bottom:var(--sp-3)">' + esc(cloudStatusLine()) + '</div>';
+    ';margin-bottom:var(--sp-3)">' + esc(cloudStatusLine()) + '</div>' +
+    // The shrink notice. NON-BLOCKING by design: doing nothing leaves the safe outcome in place, so
+    // there is nothing here to dismiss by reflex. One action, for the rare case where the smaller
+    // cloud copy is genuinely the wanted one.
+    (cloudState.kept && cloudState.kept.length
+      ? '<div class="note" style="margin-bottom:var(--sp-3)">' + esc(shrinkNoticeText(cloudState.kept)) +
+        ' <button type="button" onclick="useCloudCopyAnyway()">Use the cloud copy anyway</button></div>'
+      : '');
 
   if(!cloudConfigured()){
     return line + '<div style="font-size:var(--fs-caption);color:var(--text-dim)">' +
