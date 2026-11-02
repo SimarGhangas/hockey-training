@@ -915,7 +915,7 @@ const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3A
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-11-02 17:55';
+const APP_BUILD = '2026-11-03 00:16';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -1317,7 +1317,12 @@ const WORKOUT1_EXERCISES = [
  ["5B","5","Side Plank","https://youtu.be/BDnJuIfF5BM","Side Plank","https://youtu.be/BDnJuIfF5BM",[3,"16s e.s","60s"],[3,"20s e.s","60s"],[2,"25s e.s","60s"]],
 ];
 const WORKOUT2_EXERCISES = [
- ["1",null,"Depth Jump","https://youtu.be/Gr9bc33Vlcs","Box Jump (use your step/stairs)","https://www.youtube.com/watch?v=YLPQsdRDmB0",[3,"6","90s"],[3,"6","90s"],[2,"6","90s"]],
+ // CR-1, 3 Nov 2026: Kettlebell Swing replaces Depth Jump / Box Jump. Simar's own choice, confirmed
+ // twice (31 Oct, "Use the Kettlebell swing for both gym and home", and again on 2 Nov). Same name and
+ // same link on both sides, so it renders as ONE row with no gym/home picker. The slot keeps its shape
+ // — 10 reps held constant across all three blocks, sets 3/3/2 — so progression comes from LOAD, not
+ // from reps, which is the point of the swap: no jumping down onto a chondral ulcer.
+ ["1",null,"Kettlebell Swing","https://www.youtube.com/watch?v=7vFAsThHuKs","Kettlebell Swing","https://www.youtube.com/watch?v=7vFAsThHuKs",[3,"10","90s"],[3,"10","90s"],[2,"10","90s"]],
  ["2",null,"Stiff Leg Deadlift","https://youtu.be/5-sc5-OTAJI","Hamstring Walkout","https://youtu.be/U1DpaLuIhBA",[3,"8","90s"],[3,"8","90s"],[2,"8","90s"]],
  ["3A","3","DB Walking Lunge","https://youtu.be/uYwB7xWfP4o","Walking Lunge","https://youtu.be/aPhFnhn_5jA",[3,"20","-"],[3,"16","-"],[2,"16","-"]],
  ["3B","3","Calf Raises","https://youtu.be/yMykDWKJtvo","Calf Raises","https://youtu.be/yMykDWKJtvo",[3,"15","60s"],[3,"12","60s"],[3,"10","60s"]],
@@ -2618,7 +2623,8 @@ const idx = ({'Wk1-2':0,'Wk3-4':1})[blockFor(key, week)] ?? 2;
   // Same exercise either place (e.g. Single Leg Hip Thrust, Calf Raises — genuinely equipment-free,
   // no substitution needed) — show one name and one video link instead of "X / X" with a pointless
   // two-option picker where both options are identical. Rows that DO need a real home alternative
-  // (Barbell Squat -> Goblet Squat, Depth Jump -> Box Jump) already have distinct names/links above,
+  // (Barbell Squat -> Goblet Squat, Stiff Leg Deadlift -> Hamstring Walkout) already have distinct
+  // names/links above,
   // so they fall into the "different" branch below unchanged.
   const sameExercise = gymEx === homeEx;
   // True only inside the workout overlay, and not on its finish screen. The Today card renders the
