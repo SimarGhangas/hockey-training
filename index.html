@@ -896,7 +896,7 @@ const SG_HIGHLIGHT_BY_PRODUCT = { fit:'#0E8F8F', books:'#7A2E6B', careers:'#4A3A
 // cost real time twice — the refresh-button saga, and a "reps box can't be edited" report that
 // turned out to be a stale deploy of a file already fixed locally. A visible build stamp answers
 // "did my upload land?" in one look, instead of by debugging code that is already correct.
-const APP_BUILD = '2026-10-16 19:17';
+const APP_BUILD = '2026-11-02 17:01';
 
 /* ================= CLOUD SYNC CONFIG =================
  * Paste your Supabase project's URL and PUBLISHABLE (anon) key here. Both are meant to be public —
@@ -3999,13 +3999,44 @@ function trainingBreakdown(){
     extraCardio: EXTRA_CARDIO_TYPES.reduce((sum,t)=>sum+activityCount(t),0) + activityCount('Walk'),
   };
 }
-// The Dashboard's subject (restyle stage 3, 10 Oct 2026): how many days THIS week carry training.
-// Built on hasTrainingOn so it cannot drift from the calendar it sits above — the comment on
-// activeTrainingDays records what happened last time two counters disagreed on one screen.
+// Counts the SESSIONS logged on one day. hasTrainingOn answers only WHETHER a day carries any — it
+// returns at the first hit — so summing it can never see a second session. This mirrors hasTrainingOn's
+// branches exactly and increments instead of returning, which is what makes
+// hasTrainingOn(w,d) === (sessionsOn(w,d) > 0) true by construction. Asserted both ways; keep them
+// in step if either changes.
+// A day holds at most two: the day's own pick (effectiveTypeFor -> w1/w2, cardio or activity) and one
+// additional activity (DATA.extra, one flat record per day — see the note on additionalActivityTypes).
+function sessionsOn(week, dayIndex){
+  const dayKey = `${week}_${dayIndex}`;
+  let n = 0;
+  const type = effectiveTypeFor(week, dayIndex);
+  if(type==='w1' || type==='w2'){
+    const exList = type==='w1' ? WORKOUT1_EXERCISES : WORKOUT2_EXERCISES;
+    if(exList.some(ex=>hasSetData(DATA[type][`${week}_${ex[0]}`]))) n++;
+  } else if(type && CARDIO_TYPES.includes(type)){
+    if(hasMetricData(DATA.cardio[`${week}_${type}`], CARDIO_METRICS)) n++;
+  } else if(type && ACTIVITY_REASONS.includes(type)){
+    if(hasMetricData(DATA.activity[dayKey], ACTIVITY_METRICS)) n++;
+  }
+  const extraRec = DATA.extra[dayKey];
+  if(extraRec && extraRec.active && hasMetricData(extraRec, ACTIVITY_METRICS)) n++;
+  return n;
+}
+// The Dashboard's subject (restyle stage 3, 10 Oct 2026; became a SESSION count on 2 Nov 2026).
+// It used to sum hasTrainingOn — how many DAYS carried training — while the label beside it read
+// "sessions", so Simar's TWO hockey matches on Sun 1 Nov 2026 showed as one session. The code did
+// exactly what its own comment said it did; the label on screen said something else, which is why
+// nothing read as wrong in review. Fixing the label instead was not an option: he wants the count.
+//
+// The comment this replaces warned that the subject must not drift from the calendar above it. It now
+// deliberately CAN, and that is the point: the subject counts SESSIONS, the training calendar colours
+// DAYS (its own caption says "One square per day"), and Totals' "Total training days logged" counts
+// days as well. Three figures, two units, each labelled with the unit it uses. The divergence is
+// intentional — do NOT "fix" one of them to match another.
 function sessionsThisWeek(){
   const now = weekInfoFor(startOfDay(new Date()));
   let n = 0;
-  for(let d = 0; d < 7; d++){ if(hasTrainingOn(now.week, d)) n++; }
+  for(let d = 0; d < 7; d++){ n += sessionsOn(now.week, d); }
   return n;
 }
 // Plain sentence with the comparison inside it, per the brand's copy rule — the second half carries
@@ -4020,6 +4051,10 @@ function subjectLabel(){
   if(!pw || !pw.run) return 'This week';
   return `Week ${pw.week} of ${pw.run.weeks}`;
 }
+// Both prior-week loops below count with sessionsOn, NOT hasTrainingOn (changed 2 Nov 2026 with the
+// subject). They have to: `n` is a session count, so counting the weeks it is compared against in DAYS
+// would compare two different units and silently understate every prior week the moment one of them
+// held two sessions in a day. The sentence is the comparison, so a unit mismatch here is not cosmetic.
 function weekSummarySentence(){
   const n = sessionsThisWeek();
   const now = weekInfoFor(startOfDay(new Date()));
@@ -4032,7 +4067,7 @@ function weekSummarySentence(){
       const counts = [];
       for(let w = Math.max(1, now.week - (pw.week - 1)); w < now.week; w++){
         let c = 0;
-        for(let d = 0; d < 7; d++){ if(hasTrainingOn(w, d)) c++; }
+        for(let d = 0; d < 7; d++){ c += sessionsOn(w, d); }
         counts.push(c);
       }
       if(counts.length){
@@ -4047,7 +4082,7 @@ function weekSummarySentence(){
   const priors = [];
   for(let w = Math.max(1, now.week - 4); w < now.week; w++){
     let c = 0;
-    for(let d = 0; d < 7; d++){ if(hasTrainingOn(w, d)) c++; }
+    for(let d = 0; d < 7; d++){ c += sessionsOn(w, d); }
     priors.push(c);
   }
   if(!priors.length) return null;
